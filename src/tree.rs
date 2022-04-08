@@ -10,7 +10,7 @@ impl<A: Clone> From<&SExp<A>> for Tree<A> {
     fn from(sexp: &SExp<A>) -> Self {
         match sexp {
             SExp::List(list) => {
-                let root = match list.iter().nth(0).unwrap() {
+                let root = match list.get(0).unwrap() {
                     SExp::Atom(a) => a,
                     _ => panic!("First element in SExp list has to be an atom!"),
                 };
