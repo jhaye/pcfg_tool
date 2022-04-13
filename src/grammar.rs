@@ -48,11 +48,26 @@ where
         self.rules.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.rules.is_empty()
+    }
+
     pub fn absorb(&mut self, mut other: Self) {
         other
             .rules
             .drain()
             .for_each(|(r, w)| self.insert_with_weight(r, w));
+    }
+
+    pub fn merge(mut self, other: Self) -> Self {
+        self.absorb(other);
+        self
+    }
+}
+
+impl<N: Eq + Hash, T: Eq + Hash> Default for RuleSetAbsoluteWeight<N, T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -60,28 +75,32 @@ impl<A: Eq + Hash + Clone> From<Tree<A>> for RuleSetAbsoluteWeight<A, A> {
     fn from(tree: Tree<A>) -> Self {
         let mut rule_set = RuleSetAbsoluteWeight::new();
 
-        if tree.children.len() == 1 {
-            let child = tree.children.get(0).unwrap();
-            if child.is_leaf() {
-                rule_set.insert(Rule::Lexical {
-                    lhs: tree.root,
-                    rhs: child.root.clone(),
-                });
-            } else {
+        match tree.children.len() {
+            1 => {
+                let child = tree.children.get(0).unwrap();
+                if child.is_leaf() {
+                    rule_set.insert(Rule::Lexical {
+                        lhs: tree.root,
+                        rhs: child.root.clone(),
+                    });
+                } else {
+                    rule_set.insert(Rule::NonLexical {
+                        lhs: tree.root,
+                        rhs: vec![child.root.clone()],
+                    });
+                }
+            }
+            x if x > 1 => {
                 rule_set.insert(Rule::NonLexical {
                     lhs: tree.root,
-                    rhs: vec![child.root.clone()],
+                    rhs: tree.children.iter().map(|c| c.root.clone()).collect(),
                 });
-            }
-        } else if tree.children.len() > 1 {
-            rule_set.insert(Rule::NonLexical {
-                lhs: tree.root,
-                rhs: tree.children.iter().map(|c| c.root.clone()).collect(),
-            });
 
-            for child in tree.children {
-                rule_set.absorb(RuleSetAbsoluteWeight::from(child))
+                for child in tree.children {
+                    rule_set.absorb(RuleSetAbsoluteWeight::from(child))
+                }
             }
+            _ => {}
         }
 
         rule_set

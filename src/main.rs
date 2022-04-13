@@ -5,6 +5,7 @@ pub mod tree;
 use std::io::{self, BufRead};
 use std::str::FromStr;
 
+use grammar::RuleSetAbsoluteWeight;
 use parser::SExp;
 use tree::Tree;
 
@@ -41,11 +42,11 @@ fn main() {
                 .filter_map(|s| s.ok())
                 .collect();
 
-            let trees: Vec<Tree<String>> = sexps.iter().map(|s| Tree::from(s)).collect();
-
-            for tree in trees {
-                println!("{:#?}", tree);
-            }
+            let _: RuleSetAbsoluteWeight<String, String> = sexps
+                .iter()
+                .map(Tree::from)
+                .map(RuleSetAbsoluteWeight::from)
+                .fold(RuleSetAbsoluteWeight::default(), |acc, x| acc.merge(x));
         }
     }
 }
