@@ -6,6 +6,12 @@ pub struct Tree<A> {
     pub children: Vec<Tree<A>>,
 }
 
+impl<A> Tree<A> {
+    pub fn is_leaf(&self) -> bool {
+        self.children.is_empty()
+    }
+}
+
 impl<A: Clone> From<&SExp<A>> for Tree<A> {
     fn from(sexp: &SExp<A>) -> Self {
         match sexp {

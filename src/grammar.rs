@@ -1,3 +1,5 @@
+use crate::tree::Tree;
+
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -16,7 +18,7 @@ where
     N: Eq + Hash,
     T: Eq + Hash,
 {
-    rules: HashMap<Rule<N, T>, u32>,
+    pub rules: HashMap<Rule<N, T>, u32>,
 }
 
 impl<N, T> RuleSetAbsoluteWeight<N, T>
@@ -42,10 +44,133 @@ where
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.rules.len()
+    }
+
     pub fn absorb(&mut self, mut other: Self) {
         other
             .rules
             .drain()
             .for_each(|(r, w)| self.insert_with_weight(r, w));
+    }
+}
+
+impl<A: Eq + Hash + Clone> From<Tree<A>> for RuleSetAbsoluteWeight<A, A> {
+    fn from(tree: Tree<A>) -> Self {
+        let mut rule_set = RuleSetAbsoluteWeight::new();
+
+        if tree.children.len() == 1 {
+            let child = tree.children.get(0).unwrap();
+            if child.is_leaf() {
+                rule_set.insert(Rule::Lexical {
+                    lhs: tree.root,
+                    rhs: child.root.clone(),
+                });
+            } else {
+                rule_set.insert(Rule::NonLexical {
+                    lhs: tree.root,
+                    rhs: vec![child.root.clone()],
+                });
+            }
+        } else if tree.children.len() > 1 {
+            rule_set.insert(Rule::NonLexical {
+                lhs: tree.root,
+                rhs: tree.children.iter().map(|c| c.root.clone()).collect(),
+            });
+
+            for child in tree.children {
+                rule_set.absorb(RuleSetAbsoluteWeight::from(child))
+            }
+        }
+
+        rule_set
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn basic_rule_induction_from_tree() {
+        let rule_set = RuleSetAbsoluteWeight::from(Tree {
+            root: "NP".to_string(),
+            children: vec![
+                Tree {
+                    root: "D".to_string(),
+                    children: vec![Tree {
+                        root: "the".to_string(),
+                        children: vec![],
+                    }],
+                },
+                Tree {
+                    root: "N".to_string(),
+                    children: vec![Tree {
+                        root: "ball".to_string(),
+                        children: vec![],
+                    }],
+                },
+            ],
+        });
+
+        assert!(rule_set.len() == 3);
+
+        assert_eq!(
+            rule_set.rules.get(&Rule::NonLexical {
+                lhs: "NP".to_string(),
+                rhs: vec!["D".to_string(), "N".to_string()]
+            }),
+            Some(&1)
+        );
+
+        assert_eq!(
+            rule_set.rules.get(&Rule::Lexical {
+                lhs: "D".to_string(),
+                rhs: "the".to_string()
+            }),
+            Some(&1)
+        );
+
+        assert_eq!(
+            rule_set.rules.get(&Rule::Lexical {
+                lhs: "N".to_string(),
+                rhs: "ball".to_string()
+            }),
+            Some(&1)
+        );
+    }
+
+    #[test]
+    fn rule_induction_with_duplicate() {
+        let rule_set = RuleSetAbsoluteWeight::from(Tree {
+            root: "NP".to_string(),
+            children: vec![
+                Tree {
+                    root: "D".to_string(),
+                    children: vec![Tree {
+                        root: "the".to_string(),
+                        children: vec![],
+                    }],
+                },
+                Tree {
+                    root: "D".to_string(),
+                    children: vec![Tree {
+                        root: "the".to_string(),
+                        children: vec![],
+                    }],
+                },
+            ],
+        });
+
+        assert!(rule_set.len() == 2);
+
+        assert_eq!(
+            rule_set.rules.get(&Rule::Lexical {
+                lhs: "D".to_string(),
+                rhs: "the".to_string()
+            }),
+            Some(&2)
+        );
     }
 }
