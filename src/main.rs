@@ -6,6 +6,7 @@ use std::io::{self, BufRead};
 use std::str::FromStr;
 
 use parser::SExp;
+use tree::Tree;
 
 use clap::{Parser, Subcommand};
 
@@ -40,8 +41,10 @@ fn main() {
                 .filter_map(|s| s.ok())
                 .collect();
 
-            for sexp in sexps {
-                println!("{:#?}", sexp);
+            let trees: Vec<Tree<String>> = sexps.iter().map(|s| Tree::from(s)).collect();
+
+            for tree in trees {
+                println!("{:#?}", tree);
             }
         }
     }
