@@ -1,1 +1,4 @@
 /target
+*.rules
+*.lexicon
+*.words
