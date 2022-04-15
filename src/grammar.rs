@@ -2,7 +2,7 @@ use crate::tree::Tree;
 
 use multimap::MultiMap;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::{self, Write};
@@ -152,10 +152,16 @@ where
     }
 
     pub fn write_terminals<W: Write>(&self, buf: &mut W) -> io::Result<()> {
+        let mut terminals = HashSet::new();
+
         for rule in self.rules.keys() {
             if let Rule::Lexical { lhs: _, rhs } = rule {
-                writeln!(buf, "{}", rhs)?;
+                let _ = terminals.insert(rhs);
             }
+        }
+
+        for terminal in terminals {
+            writeln!(buf, "{}", terminal)?;
         }
 
         Ok(())
