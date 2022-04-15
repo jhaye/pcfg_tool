@@ -132,7 +132,7 @@ where
                 for n in rhs {
                     write!(buf, "{} ", n)?;
                 }
-                write!(buf, "{}\n", weight)?;
+                writeln!(buf, "{}", weight)?;
             }
         }
 
@@ -144,7 +144,7 @@ where
             if let Rule::Lexical { lhs, rhs } = rule {
                 write!(buf, "{} ", lhs)?;
                 write!(buf, "{} ", rhs)?;
-                write!(buf, "{}\n", weight)?;
+                writeln!(buf, "{}", weight)?;
             }
         }
 
@@ -152,9 +152,9 @@ where
     }
 
     pub fn write_terminals<W: Write>(&self, buf: &mut W) -> io::Result<()> {
-        for (rule, _) in &self.rules {
+        for rule in self.rules.keys() {
             if let Rule::Lexical { lhs: _, rhs } = rule {
-                write!(buf, "{}\n", rhs)?;
+                writeln!(buf, "{}", rhs)?;
             }
         }
 
