@@ -41,7 +41,7 @@ fn main() -> io::Result<()> {
                 .filter_map(|l| l.ok())
                 .map(|l| SExp::from_str(&l))
                 .filter_map(|s| s.ok())
-                .map(|s| Tree::from(&s))
+                .map(|s| Tree::from(s))
                 .map(GrammarAbsoluteWeight::from)
                 .fold(GrammarAbsoluteWeight::default(), |acc, x| acc.merge(x));
 
