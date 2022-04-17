@@ -11,3 +11,4 @@ nom = "7.1.1"
 clap = { version = "3.1.8", features = ["derive"] }
 multimap = "0.8.3"
 smallstr = "0.3.0"
+fxhash = "0.2.1"

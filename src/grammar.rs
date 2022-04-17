@@ -1,8 +1,8 @@
 use crate::tree::Tree;
 
+use fxhash::{FxHashMap, FxHashSet};
 use multimap::MultiMap;
 
-use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::{self, Write};
@@ -23,7 +23,7 @@ where
     N: Eq + Hash,
     T: Eq + Hash,
 {
-    pub rules: HashMap<Rule<N, T>, u32>,
+    pub rules: FxHashMap<Rule<N, T>, u32>,
 }
 
 pub struct GrammarNormalisedWeight<N, T>
@@ -31,7 +31,7 @@ where
     N: Eq + Hash,
     T: Eq + Hash,
 {
-    pub rules: HashMap<Rule<N, T>, f64>,
+    pub rules: FxHashMap<Rule<N, T>, f64>,
 }
 
 impl<N, T> GrammarAbsoluteWeight<N, T>
@@ -41,7 +41,7 @@ where
 {
     pub fn new() -> Self {
         Self {
-            rules: HashMap::new(),
+            rules: FxHashMap::default(),
         }
     }
 
@@ -152,7 +152,7 @@ where
     }
 
     pub fn write_terminals<W: Write>(&self, buf: &mut W) -> io::Result<()> {
-        let mut terminals = HashSet::new();
+        let mut terminals = FxHashSet::default();
 
         for rule in self.rules.keys() {
             if let Rule::Lexical { lhs: _, rhs } = rule {
@@ -184,7 +184,7 @@ impl<A: Eq + Hash + Clone> From<GrammarAbsoluteWeight<A, A>> for GrammarNormalis
             lhs_buckets.insert(lhs.clone(), (rule, weight));
         }
 
-        let mut grammar_map: HashMap<Rule<A, A>, f64> = HashMap::new();
+        let mut grammar_map: FxHashMap<Rule<A, A>, f64> = FxHashMap::default();
 
         // Normalise weights.
         for (_, bucket) in lhs_buckets.iter_all() {
