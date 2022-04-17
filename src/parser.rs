@@ -8,6 +8,7 @@ use nom::error::Error as NError;
 use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::{Finish, IResult};
+use smallstr::SmallString;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum SExp<A> {
@@ -15,7 +16,7 @@ pub enum SExp<A> {
     List(Vec<SExp<A>>),
 }
 
-impl FromStr for SExp<String> {
+impl FromStr for SExp<SmallString<[u8; 8]>> {
     type Err = NError<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -29,16 +30,16 @@ impl FromStr for SExp<String> {
     }
 }
 
-fn parse_sexp(input: &str) -> IResult<&str, SExp<String>> {
+fn parse_sexp(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
     alt((delimited(char('('), parse_sexp_list, char(')')), parse_atom))(input.trim())
 }
 
-fn parse_sexp_list(input: &str) -> IResult<&str, SExp<String>> {
+fn parse_sexp_list(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
     many0(parse_sexp)(input.trim()).map(|(i, o)| (i, SExp::List(o)))
 }
 
-fn parse_atom(input: &str) -> IResult<&str, SExp<String>> {
-    is_not("() ")(input.trim()).map(|(i, o)| (i, SExp::Atom(o.to_string())))
+fn parse_atom(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
+    is_not("() ")(input.trim()).map(|(i, o)| (i, SExp::Atom(SmallString::from(o))))
 }
 
 #[cfg(test)]
@@ -52,35 +53,41 @@ mod test {
 
         // Produces same results with whitespace
         let (_, atom) = parse_atom("a").unwrap();
-        assert_eq!(atom, SExp::Atom("a".to_string()));
+        assert_eq!(atom, SExp::Atom(SmallString::from("a")));
         let (_, atom) = parse_atom(" a ").unwrap();
-        assert_eq!(atom, SExp::Atom("a".to_string()));
+        assert_eq!(atom, SExp::Atom(SmallString::from("a")));
 
         // Works with special characters
         let (_, atom) = parse_atom("NP-SBJ|<,,ADJP,,>").unwrap();
-        assert_eq!(atom, SExp::Atom("NP-SBJ|<,,ADJP,,>".to_string()));
+        assert_eq!(atom, SExp::Atom(SmallString::from("NP-SBJ|<,,ADJP,,>")));
     }
 
     #[test]
     fn sexp_correct() {
         // Just an atom
-        assert_eq!(SExp::from_str("a").unwrap(), SExp::Atom("a".to_string()));
+        assert_eq!(
+            SExp::from_str("a").unwrap(),
+            SExp::Atom(SmallString::from("a"))
+        );
 
         // With whitespace
-        assert_eq!(SExp::from_str(" a ").unwrap(), SExp::Atom("a".to_string()));
+        assert_eq!(
+            SExp::from_str(" a ").unwrap(),
+            SExp::Atom(SmallString::from("a"))
+        );
 
         // With brackets
         assert_eq!(
             SExp::from_str("(a)").unwrap(),
-            SExp::List(vec![SExp::Atom("a".to_string())])
+            SExp::List(vec![SExp::Atom(SmallString::from("a"))])
         );
 
         // List with multiple elements
         assert_eq!(
             SExp::from_str("(a b)").unwrap(),
             SExp::List(vec![
-                SExp::Atom("a".to_string()),
-                SExp::Atom("b".to_string())
+                SExp::Atom(SmallString::from("a")),
+                SExp::Atom(SmallString::from("b"))
             ])
         );
 
@@ -91,10 +98,10 @@ mod test {
         assert_eq!(
             SExp::from_str("(a (b c))").unwrap(),
             SExp::List(vec![
-                SExp::Atom("a".to_string()),
+                SExp::Atom(SmallString::from("a")),
                 SExp::List(vec![
-                    SExp::Atom("b".to_string()),
-                    SExp::Atom("c".to_string()),
+                    SExp::Atom(SmallString::from("b")),
+                    SExp::Atom(SmallString::from("c")),
                 ])
             ])
         );
