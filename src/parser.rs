@@ -2,11 +2,11 @@ use std::str::FromStr;
 
 use nom::branch::alt;
 use nom::bytes::complete::is_not;
-use nom::character::complete::char;
+use nom::character::complete::{char, multispace0, multispace1};
 use nom::combinator::all_consuming;
 use nom::error::Error as NError;
-use nom::multi::many0;
-use nom::sequence::delimited;
+use nom::multi::separated_list0;
+use nom::sequence::{delimited, preceded};
 use nom::{Finish, IResult};
 use smallstr::SmallString;
 
@@ -31,11 +31,14 @@ impl FromStr for SExp<SmallString<[u8; 8]>> {
 }
 
 fn parse_sexp(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
-    alt((delimited(char('('), parse_sexp_list, char(')')), parse_atom))(input.trim())
+    alt((
+        delimited(char('('), parse_sexp_list, preceded(multispace0, char(')'))),
+        parse_atom,
+    ))(input.trim())
 }
 
 fn parse_sexp_list(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
-    many0(parse_sexp)(input.trim()).map(|(i, o)| (i, SExp::List(o)))
+    separated_list0(multispace1, parse_sexp)(input.trim()).map(|(i, o)| (i, SExp::List(o)))
 }
 
 fn parse_atom(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
@@ -75,6 +78,7 @@ mod test {
             SExp::from_str(" a ").unwrap(),
             SExp::Atom(SmallString::from("a"))
         );
+        assert!(SExp::from_str(" ( a ) ").is_ok());
 
         // With brackets
         assert_eq!(
@@ -111,5 +115,9 @@ mod test {
 
         // Nothing
         assert!(SExp::from_str("").is_err());
+
+        // Combined
+        assert!(SExp::from_str("  (   A (   A  a  ) ( A b ))").is_ok());
+        assert!(SExp::from_str("( A    (   B  (  A a ) ) )").is_ok());
     }
 }
