@@ -4,13 +4,14 @@ pub mod tree;
 
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use grammar::{GrammarAbsoluteWeight, GrammarNormalisedWeight};
 use parser::SExp;
 use tree::Tree;
 
-use clap::{Parser, Subcommand};
+use clap::{ArgEnum, Parser, Subcommand};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -25,7 +26,59 @@ enum Commands {
     /// Reads a sequence of constituent trees from STDIN and prints the induced PCFG to STDOUT.
     /// If the optional argument [GRAMMAR] is present, it is written into the files
     /// GRAMMAR.rules, GRAMMAR.lexicon and GRAMMAR.words.
-    Induce { grammar: Option<String> },
+    Induce {
+        grammar: Option<String>,
+    },
+    Parse {
+        rules: String,
+        lexicon: String,
+        #[clap(short, long, default_value_t=ParsingParadigma::Cyk, arg_enum)]
+        paradigma: ParsingParadigma,
+        #[clap(short, long, default_value_t = String::from("ROOT"))]
+        initial_nonterminal: String,
+        #[clap(short, long)]
+        unking: bool,
+        #[clap(short, long)]
+        smoothing: bool,
+        #[clap(short, long)]
+        threshold_beam: Option<u32>,
+        #[clap(short, long)]
+        rank_beam: Option<u32>,
+        #[clap(short, long)]
+        kbest: Option<u32>,
+        #[clap(short, long)]
+        astar: Option<PathBuf>,
+    },
+    Binarise {
+        #[clap(short, long, default_value_t = 999)]
+        horizontal: u32,
+        #[clap(short, long, default_value_t = 1)]
+        vertical: u32,
+        #[clap(long)]
+        help: bool,
+    },
+    Debinarise,
+    Unk {
+        #[clap(short, long)]
+        threshold: Option<u32>,
+    },
+    Smooth {
+        #[clap(short, long)]
+        threshold: Option<u32>,
+    },
+    Outside {
+        rules: String,
+        lexicon: String,
+        grammar: Option<String>,
+        #[clap(short, long, default_value_t = String::from("ROOT"))]
+        initial_nonterminal: String,
+    },
+}
+
+#[derive(ArgEnum, Copy, Clone)]
+enum ParsingParadigma {
+    Cyk,
+    Deductive,
 }
 
 fn main() -> io::Result<()> {
@@ -64,6 +117,7 @@ fn main() -> io::Result<()> {
                 grammar_normalised.write_terminals(&mut out_handle)?;
             }
         }
+        _ => std::process::exit(22),
     }
 
     Ok(())
