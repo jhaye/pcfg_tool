@@ -91,9 +91,19 @@ fn main() -> io::Result<()> {
 
             let grammar_absolute = handle
                 .lines()
-                .filter_map(|l| l.ok())
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
                 .map(|l| SExp::from_str(&l))
-                .filter_map(|s| s.ok())
+                .filter_map(|s| {
+                    if s.is_err() {
+                        eprintln!("Error when parsing SExp: {:?}", s);
+                    }
+                    s.ok()
+                })
                 .map(|s| Tree::from(s))
                 .map(GrammarAbsoluteWeight::from)
                 .fold(GrammarAbsoluteWeight::default(), |acc, x| acc.merge(x));
