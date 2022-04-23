@@ -18,26 +18,19 @@ where
 }
 
 #[derive(Debug)]
-pub struct GrammarAbsoluteWeight<N, T>
+pub struct GrammarWeighted<N, T, W>
 where
     N: Eq + Hash,
     T: Eq + Hash,
 {
-    pub rules: FxHashMap<Rule<N, T>, u32>,
+    pub rules: FxHashMap<Rule<N, T>, W>,
 }
 
-pub struct GrammarNormalisedWeight<N, T>
+impl<N, T, W> GrammarWeighted<N, T, W>
 where
-    N: Eq + Hash,
-    T: Eq + Hash,
-{
-    pub rules: FxHashMap<Rule<N, T>, f64>,
-}
-
-impl<N, T> GrammarAbsoluteWeight<N, T>
-where
-    N: Eq + Hash,
-    T: Eq + Hash,
+    N: Eq + Hash + Display,
+    T: Eq + Hash + Display,
+    W: Display,
 {
     pub fn new() -> Self {
         Self {
@@ -45,6 +38,62 @@ where
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.rules.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rules.is_empty()
+    }
+
+    pub fn write_non_lexical_rules<Wr: Write>(&self, buf: &mut Wr) -> io::Result<()> {
+        for (rule, weight) in &self.rules {
+            if let Rule::NonLexical { lhs, rhs } = rule {
+                write!(buf, "{} -> ", lhs)?;
+                for n in rhs {
+                    write!(buf, "{} ", n)?;
+                }
+                writeln!(buf, "{}", weight)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn write_lexical_rules<Wr: Write>(&self, buf: &mut Wr) -> io::Result<()> {
+        for (rule, weight) in &self.rules {
+            if let Rule::Lexical { lhs, rhs } = rule {
+                write!(buf, "{} ", lhs)?;
+                write!(buf, "{} ", rhs)?;
+                writeln!(buf, "{}", weight)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn write_terminals<Wr: Write>(&self, buf: &mut Wr) -> io::Result<()> {
+        let mut terminals = FxHashSet::default();
+
+        for rule in self.rules.keys() {
+            if let Rule::Lexical { lhs: _, rhs } = rule {
+                let _ = terminals.insert(rhs);
+            }
+        }
+
+        for terminal in terminals {
+            writeln!(buf, "{}", terminal)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<N, T> GrammarWeighted<N, T, u32>
+where
+    N: Eq + Hash,
+    T: Eq + Hash,
+{
     pub fn insert(&mut self, rule: Rule<N, T>) {
         self.insert_with_weight(rule, 1);
     }
@@ -55,14 +104,6 @@ where
         } else {
             self.rules.insert(rule, weight);
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.rules.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.rules.is_empty()
     }
 
     pub fn absorb(&mut self, mut other: Self) {
@@ -78,15 +119,17 @@ where
     }
 }
 
-impl<N: Eq + Hash, T: Eq + Hash> Default for GrammarAbsoluteWeight<N, T> {
+impl<N: Eq + Hash + Display, T: Eq + Hash + Display, W: Display> Default
+    for GrammarWeighted<N, T, W>
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<A: Eq + Hash + Clone> From<Tree<A>> for GrammarAbsoluteWeight<A, A> {
+impl<A: Eq + Hash + Clone + Display> From<Tree<A>> for GrammarWeighted<A, A, u32> {
     fn from(tree: Tree<A>) -> Self {
-        let mut rule_set = GrammarAbsoluteWeight::new();
+        let mut rule_set = GrammarWeighted::new();
 
         match tree.children.as_slice() {
             [child] => {
@@ -112,63 +155,14 @@ impl<A: Eq + Hash + Clone> From<Tree<A>> for GrammarAbsoluteWeight<A, A> {
         }
 
         for child in tree.children {
-            rule_set.absorb(GrammarAbsoluteWeight::from(child))
+            rule_set.absorb(GrammarWeighted::from(child))
         }
 
         rule_set
     }
 }
-
-impl<N, T> GrammarNormalisedWeight<N, T>
-where
-    N: Eq + Hash + Display,
-    T: Eq + Hash + Display,
-{
-    pub fn write_non_lexical_rules<W: Write>(&self, buf: &mut W) -> io::Result<()> {
-        for (rule, weight) in &self.rules {
-            if let Rule::NonLexical { lhs, rhs } = rule {
-                write!(buf, "{} -> ", lhs)?;
-                for n in rhs {
-                    write!(buf, "{} ", n)?;
-                }
-                writeln!(buf, "{}", weight)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn write_lexical_rules<W: Write>(&self, buf: &mut W) -> io::Result<()> {
-        for (rule, weight) in &self.rules {
-            if let Rule::Lexical { lhs, rhs } = rule {
-                write!(buf, "{} ", lhs)?;
-                write!(buf, "{} ", rhs)?;
-                writeln!(buf, "{}", weight)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn write_terminals<W: Write>(&self, buf: &mut W) -> io::Result<()> {
-        let mut terminals = FxHashSet::default();
-
-        for rule in self.rules.keys() {
-            if let Rule::Lexical { lhs: _, rhs } = rule {
-                let _ = terminals.insert(rhs);
-            }
-        }
-
-        for terminal in terminals {
-            writeln!(buf, "{}", terminal)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<A: Eq + Hash + Clone> From<GrammarAbsoluteWeight<A, A>> for GrammarNormalisedWeight<A, A> {
-    fn from(grammar: GrammarAbsoluteWeight<A, A>) -> Self {
+impl<A: Eq + Hash + Clone> From<GrammarWeighted<A, A, u32>> for GrammarWeighted<A, A, f64> {
+    fn from(grammar: GrammarWeighted<A, A, u32>) -> Self {
         let mut grammar = grammar;
 
         let mut lhs_buckets = MultiMap::new();
@@ -194,7 +188,7 @@ impl<A: Eq + Hash + Clone> From<GrammarAbsoluteWeight<A, A>> for GrammarNormalis
             }
         }
 
-        GrammarNormalisedWeight { rules: grammar_map }
+        GrammarWeighted { rules: grammar_map }
     }
 }
 
@@ -204,7 +198,7 @@ mod test {
 
     #[test]
     fn basic_rule_induction_from_tree() {
-        let rule_set = GrammarAbsoluteWeight::from(Tree {
+        let rule_set = GrammarWeighted::from(Tree {
             root: "NP".to_string(),
             children: vec![
                 Tree {
@@ -251,7 +245,7 @@ mod test {
         );
 
         // Also works when constituent tree is a line.
-        let rule_set = GrammarAbsoluteWeight::from(Tree {
+        let rule_set = GrammarWeighted::from(Tree {
             root: "NP".to_string(),
             children: vec![Tree {
                 root: "D".to_string(),
@@ -273,7 +267,7 @@ mod test {
 
     #[test]
     fn rule_induction_with_duplicate() {
-        let rule_set = GrammarAbsoluteWeight::from(Tree {
+        let rule_set = GrammarWeighted::from(Tree {
             root: "NP".to_string(),
             children: vec![
                 Tree {
@@ -306,7 +300,7 @@ mod test {
 
     #[test]
     fn rule_normalisation() {
-        let normalised_grammar = GrammarNormalisedWeight::from(GrammarAbsoluteWeight::from(Tree {
+        let normalised_grammar = GrammarWeighted::from(GrammarWeighted::from(Tree {
             root: "NP".to_string(),
             children: vec![
                 Tree {

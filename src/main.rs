@@ -7,7 +7,7 @@ use std::io::{self, BufRead};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use grammar::{GrammarAbsoluteWeight, GrammarNormalisedWeight};
+use grammar::GrammarWeighted;
 use parser::SExp;
 use tree::Tree;
 
@@ -105,10 +105,11 @@ fn main() -> io::Result<()> {
                     s.ok()
                 })
                 .map(|s| Tree::from(s))
-                .map(GrammarAbsoluteWeight::from)
-                .fold(GrammarAbsoluteWeight::default(), |acc, x| acc.merge(x));
+                .map(GrammarWeighted::from)
+                .fold(GrammarWeighted::default(), |acc, x| acc.merge(x));
 
-            let grammar_normalised = GrammarNormalisedWeight::from(grammar_absolute);
+            let grammar_normalised: GrammarWeighted<_, _, f64> =
+                GrammarWeighted::from(grammar_absolute);
 
             // Write to files if grammar name was chosen, otherwise print to STDOUT.
             if let Some(grammar_name) = grammar {
