@@ -88,9 +88,8 @@ impl<A: Eq + Hash + Clone> From<Tree<A>> for GrammarAbsoluteWeight<A, A> {
     fn from(tree: Tree<A>) -> Self {
         let mut rule_set = GrammarAbsoluteWeight::new();
 
-        match tree.children.len() {
-            1 => {
-                let child = tree.children.get(0).unwrap();
+        match tree.children.as_slice() {
+            [child] => {
                 if child.is_leaf() {
                     rule_set.insert(Rule::Lexical {
                         lhs: tree.root,
@@ -103,7 +102,7 @@ impl<A: Eq + Hash + Clone> From<Tree<A>> for GrammarAbsoluteWeight<A, A> {
                     });
                 }
             }
-            x if x > 1 => {
+            [_, ..] => {
                 rule_set.insert(Rule::NonLexical {
                     lhs: tree.root,
                     rhs: tree.children.iter().map(|c| c.root.clone()).collect(),
