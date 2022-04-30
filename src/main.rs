@@ -1,5 +1,7 @@
 pub mod grammar;
-pub mod parser;
+pub mod rule;
+pub mod sentence;
+pub mod sexp;
 pub mod tree;
 
 use std::fs::File;
@@ -8,7 +10,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use grammar::GrammarWeighted;
-use parser::SExp;
+use sexp::SExp;
 use tree::Tree;
 
 use clap::{ArgEnum, Parser, Subcommand};

@@ -1,3 +1,4 @@
+use crate::rule::Rule;
 use crate::tree::Tree;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -6,16 +7,6 @@ use multimap::MultiMap;
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::{self, Write};
-
-#[derive(Eq, PartialEq, Hash, Clone, Debug)]
-pub enum Rule<N, T>
-where
-    N: Eq + Hash,
-    T: Eq + Hash,
-{
-    Lexical { lhs: N, rhs: T },
-    NonLexical { lhs: N, rhs: Vec<N> },
-}
 
 #[derive(Debug)]
 pub struct GrammarWeighted<N, T, W>
