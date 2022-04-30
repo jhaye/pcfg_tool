@@ -28,7 +28,10 @@ struct WeightedRule<N: Eq + Hash, T: Eq + Hash, W> {
     weight: W,
 }
 
-impl FromStr for WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64> {
+type ParsedWeightedRule = WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64>;
+type NonLexicalRhs = (Vec<SmallString<[u8; 8]>>, f64);
+
+impl FromStr for ParsedWeightedRule {
     type Err = NError<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -42,15 +45,11 @@ impl FromStr for WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64> {
     }
 }
 
-fn parse_rule(
-    input: &str,
-) -> IResult<&str, WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64>> {
+fn parse_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
     alt((parse_lexical_rule, parse_nonlexical_rule))(input.trim())
 }
 
-fn parse_lexical_rule(
-    input: &str,
-) -> IResult<&str, WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64>> {
+fn parse_lexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
     tuple((
         terminated(is_not(" \t"), multispace1),
         terminated(is_not(" \t"), multispace1),
@@ -70,9 +69,7 @@ fn parse_lexical_rule(
     })
 }
 
-fn parse_nonlexical_rule(
-    input: &str,
-) -> IResult<&str, WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64>> {
+fn parse_nonlexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
     separated_pair(
         terminated(is_not(" \t"), multispace1),
         tag("->"),
@@ -92,15 +89,9 @@ fn parse_nonlexical_rule(
     })
 }
 
-fn parse_rhs_nonlexical_rule(input: &str) -> IResult<&str, (Vec<SmallString<[u8; 8]>>, f64)> {
-    many_till(terminated(is_not(" \t"), multispace1), double)(input.trim()).map(
-        |(i, (mut rhs, w))| {
-            (
-                i,
-                (rhs.drain(..).map(|n| SmallString::from(n)).collect(), w),
-            )
-        },
-    )
+fn parse_rhs_nonlexical_rule(input: &str) -> IResult<&str, NonLexicalRhs> {
+    many_till(terminated(is_not(" \t"), multispace1), double)(input.trim())
+        .map(|(i, (mut rhs, w))| (i, (rhs.drain(..).map(SmallString::from).collect(), w)))
 }
 
 #[cfg(test)]

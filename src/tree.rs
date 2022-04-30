@@ -22,12 +22,12 @@ impl<A: Clone> From<SExp<A>> for Tree<A> {
                     _ => panic!("First element in SExp list has to be an atom!"),
                 };
 
-                let children = list.drain(..).skip(1).map(|s| Self::from(s)).collect();
+                let children = list.drain(..).skip(1).map(Self::from).collect();
 
                 Tree { root, children }
             }
-            SExp::Atom(a) => Tree {
-                root: a.clone(),
+            SExp::Atom(root) => Tree {
+                root,
                 children: vec![],
             },
         }

@@ -26,12 +26,8 @@ impl FromStr for Sentence<SmallString<[u8; 8]>> {
 }
 
 fn parse_sentence(input: &str) -> IResult<&str, Sentence<SmallString<[u8; 8]>>> {
-    separated_list1(multispace1, is_not(" \t"))(input.trim()).map(|(i, mut o)| {
-        (
-            i,
-            Sentence(o.drain(..).map(|w| SmallString::from(w)).collect()),
-        )
-    })
+    separated_list1(multispace1, is_not(" \t"))(input.trim())
+        .map(|(i, mut o)| (i, Sentence(o.drain(..).map(SmallString::from).collect())))
 }
 
 #[cfg(test)]

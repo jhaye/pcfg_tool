@@ -106,7 +106,7 @@ fn main() -> io::Result<()> {
                     }
                     s.ok()
                 })
-                .map(|s| Tree::from(s))
+                .map(Tree::from)
                 .map(GrammarWeighted::from)
                 .fold(GrammarWeighted::default(), |acc, x| acc.merge(x));
 
