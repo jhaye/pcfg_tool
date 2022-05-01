@@ -23,9 +23,9 @@ where
 }
 
 #[derive(PartialEq, Eq, Debug)]
-struct WeightedRule<N: Eq + Hash, T: Eq + Hash, W> {
-    rule: Rule<N, T>,
-    weight: W,
+pub struct WeightedRule<N: Eq + Hash, T: Eq + Hash, W> {
+    pub rule: Rule<N, T>,
+    pub weight: W,
 }
 
 type ParsedWeightedRule = WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64>;
