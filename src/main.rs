@@ -1,5 +1,4 @@
 pub mod grammar;
-pub mod rule;
 pub mod sentence;
 pub mod sexp;
 pub mod tree;
@@ -9,7 +8,7 @@ use std::io::{self, BufRead};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use grammar::GrammarWeighted;
+use grammar::bare::GrammarBare;
 use sexp::SExp;
 use tree::Tree;
 
@@ -107,11 +106,10 @@ fn main() -> io::Result<()> {
                     s.ok()
                 })
                 .map(Tree::from)
-                .map(GrammarWeighted::from)
-                .fold(GrammarWeighted::default(), |acc, x| acc.merge(x));
+                .map(GrammarBare::from)
+                .fold(GrammarBare::default(), |acc, x| acc.merge(x));
 
-            let grammar_normalised: GrammarWeighted<_, _, f64> =
-                GrammarWeighted::from(grammar_absolute);
+            let grammar_normalised: GrammarBare<_, _, f64> = GrammarBare::from(grammar_absolute);
 
             // Write to files if grammar name was chosen, otherwise print to STDOUT.
             if let Some(grammar_name) = grammar {

@@ -1,4 +1,4 @@
-use crate::rule::Rule;
+use super::rule::Rule;
 use crate::tree::Tree;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -9,7 +9,7 @@ use std::hash::Hash;
 use std::io::{self, Write};
 
 #[derive(Debug)]
-pub struct GrammarWeighted<N, T, W>
+pub struct GrammarBare<N, T, W>
 where
     N: Eq + Hash,
     T: Eq + Hash,
@@ -17,7 +17,7 @@ where
     pub rules: FxHashMap<Rule<N, T>, W>,
 }
 
-impl<N, T, W> GrammarWeighted<N, T, W>
+impl<N, T, W> GrammarBare<N, T, W>
 where
     N: Eq + Hash + Display,
     T: Eq + Hash + Display,
@@ -80,7 +80,7 @@ where
     }
 }
 
-impl<N, T> GrammarWeighted<N, T, u32>
+impl<N, T> GrammarBare<N, T, u32>
 where
     N: Eq + Hash,
     T: Eq + Hash,
@@ -110,17 +110,15 @@ where
     }
 }
 
-impl<N: Eq + Hash + Display, T: Eq + Hash + Display, W: Display> Default
-    for GrammarWeighted<N, T, W>
-{
+impl<N: Eq + Hash + Display, T: Eq + Hash + Display, W: Display> Default for GrammarBare<N, T, W> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<A: Eq + Hash + Clone + Display> From<Tree<A>> for GrammarWeighted<A, A, u32> {
+impl<A: Eq + Hash + Clone + Display> From<Tree<A>> for GrammarBare<A, A, u32> {
     fn from(tree: Tree<A>) -> Self {
-        let mut rule_set = GrammarWeighted::new();
+        let mut rule_set = GrammarBare::new();
 
         match tree.children.as_slice() {
             [child] => {
@@ -146,14 +144,14 @@ impl<A: Eq + Hash + Clone + Display> From<Tree<A>> for GrammarWeighted<A, A, u32
         }
 
         for child in tree.children {
-            rule_set.absorb(GrammarWeighted::from(child))
+            rule_set.absorb(GrammarBare::from(child))
         }
 
         rule_set
     }
 }
-impl<A: Eq + Hash + Clone> From<GrammarWeighted<A, A, u32>> for GrammarWeighted<A, A, f64> {
-    fn from(grammar: GrammarWeighted<A, A, u32>) -> Self {
+impl<A: Eq + Hash + Clone> From<GrammarBare<A, A, u32>> for GrammarBare<A, A, f64> {
+    fn from(grammar: GrammarBare<A, A, u32>) -> Self {
         let mut grammar = grammar;
 
         let mut lhs_buckets = MultiMap::new();
@@ -179,7 +177,7 @@ impl<A: Eq + Hash + Clone> From<GrammarWeighted<A, A, u32>> for GrammarWeighted<
             }
         }
 
-        GrammarWeighted { rules: grammar_map }
+        GrammarBare { rules: grammar_map }
     }
 }
 
@@ -189,7 +187,7 @@ mod test {
 
     #[test]
     fn basic_rule_induction_from_tree() {
-        let rule_set = GrammarWeighted::from(Tree {
+        let rule_set = GrammarBare::from(Tree {
             root: "NP".to_string(),
             children: vec![
                 Tree {
@@ -236,7 +234,7 @@ mod test {
         );
 
         // Also works when constituent tree is a line.
-        let rule_set = GrammarWeighted::from(Tree {
+        let rule_set = GrammarBare::from(Tree {
             root: "NP".to_string(),
             children: vec![Tree {
                 root: "D".to_string(),
@@ -258,7 +256,7 @@ mod test {
 
     #[test]
     fn rule_induction_with_duplicate() {
-        let rule_set = GrammarWeighted::from(Tree {
+        let rule_set = GrammarBare::from(Tree {
             root: "NP".to_string(),
             children: vec![
                 Tree {
@@ -291,7 +289,7 @@ mod test {
 
     #[test]
     fn rule_normalisation() {
-        let normalised_grammar = GrammarWeighted::from(GrammarWeighted::from(Tree {
+        let normalised_grammar = GrammarBare::from(GrammarBare::from(Tree {
             root: "NP".to_string(),
             children: vec![
                 Tree {
