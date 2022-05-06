@@ -9,7 +9,7 @@ use nom::{Finish, IResult};
 use smallstr::SmallString;
 
 #[derive(PartialEq, Eq, Debug)]
-struct Sentence<A>(Vec<A>);
+pub struct Sentence<A>(Vec<A>);
 
 impl FromStr for Sentence<SmallString<[u8; 8]>> {
     type Err = NError<String>;
