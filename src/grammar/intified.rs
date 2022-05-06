@@ -10,6 +10,7 @@ where
     N: Eq + Hash,
     T: Eq + Hash,
 {
+    initial_nonterminal: u32,
     pub rules: FxHashMap<Rule<u32, T>, W>,
     lookup: Vec<N>,
     lookup_index: FxHashMap<N, u32>,
@@ -20,12 +21,16 @@ where
     N: Eq + Hash + Clone,
     T: Eq + Hash,
 {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(initial_nonterminal: N) -> Self {
+        let mut result = Self {
+            initial_nonterminal: 0,
             rules: FxHashMap::default(),
             lookup: vec![],
             lookup_index: FxHashMap::default(),
-        }
+        };
+        result.initial_nonterminal = result.intify(initial_nonterminal);
+
+        result
     }
 
     fn intify(&mut self, n: N) -> u32 {
@@ -57,15 +62,5 @@ where
                 self.rules.insert(rule, weighted_rule.weight);
             }
         };
-    }
-}
-
-impl<N, T, W> Default for GrammarIntified<N, T, W>
-where
-    N: Eq + Hash + Clone,
-    T: Eq + Hash,
-{
-    fn default() -> Self {
-        Self::new()
     }
 }

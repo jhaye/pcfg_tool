@@ -4,11 +4,14 @@ pub mod sexp;
 pub mod tree;
 
 use std::fs::File;
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use grammar::bare::GrammarBare;
+use grammar::intified::GrammarIntified;
+use grammar::rule::{Rule, WeightedRule};
+use sentence::Sentence;
 use sexp::SExp;
 use tree::Tree;
 
@@ -76,7 +79,7 @@ enum Commands {
     },
 }
 
-#[derive(ArgEnum, Copy, Clone)]
+#[derive(ArgEnum, Copy, Clone, PartialEq, Eq)]
 enum ParsingParadigma {
     Cyk,
     Deductive,
@@ -127,6 +130,116 @@ fn main() -> io::Result<()> {
                 grammar_normalised.write_lexical_rules(&mut out_handle)?;
                 grammar_normalised.write_terminals(&mut out_handle)?;
             }
+        }
+        Commands::Parse {
+            rules,
+            lexicon,
+            paradigma,
+            initial_nonterminal,
+            unking,
+            smoothing,
+            threshold_beam,
+            rank_beam,
+            kbest,
+            astar,
+        } => {
+            // Filter out all unsupported options
+            if *unking
+                || *smoothing
+                || threshold_beam.is_some()
+                || rank_beam.is_some()
+                || kbest.is_some()
+                || astar.is_some()
+                || *paradigma == ParsingParadigma::Deductive
+            {
+                std::process::exit(22)
+            }
+
+            let mut grammar = GrammarIntified::new(initial_nonterminal.as_str().into());
+
+            let rules_file = File::open(rules)?;
+            let lexicon_file = File::open(lexicon)?;
+            let rules_reader = BufReader::new(rules_file);
+            let lexicon_reader = BufReader::new(lexicon_file);
+
+            rules_reader
+                .lines()
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
+                .map(|l| WeightedRule::from_str(&l))
+                .filter_map(|r| {
+                    if r.is_err() {
+                        eprintln!("Error when parsing non-lexical rule: {:?}", r);
+                    }
+
+                    if let Ok(WeightedRule {
+                        rule: Rule::Lexical { lhs: _, rhs: _ },
+                        weight: _,
+                    }) = r
+                    {
+                        eprintln!(
+                            "Lexical rule parsed when parsing non-lexical rules: {:?}",
+                            r
+                        );
+                        None
+                    } else {
+                        r.ok()
+                    }
+                })
+                .for_each(|r| grammar.insert_rule(r));
+
+            lexicon_reader
+                .lines()
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
+                .map(|l| WeightedRule::from_str(&l))
+                .filter_map(|r| {
+                    if r.is_err() {
+                        eprintln!("Error when parsing non-lexical rule: {:?}", r);
+                    }
+
+                    if let Ok(WeightedRule {
+                        rule: Rule::NonLexical { lhs: _, rhs: _ },
+                        weight: _,
+                    }) = r
+                    {
+                        eprintln!(
+                            "Non-lexical rule parsed when parsing lexical rules: {:?}",
+                            r
+                        );
+                        None
+                    } else {
+                        r.ok()
+                    }
+                })
+                .for_each(|r| grammar.insert_rule(r));
+
+            let stdin = io::stdin();
+            let handle = stdin.lock();
+            let sentences: Vec<_> = handle
+                .lines()
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
+                .map(|l| Sentence::from_str(&l))
+                .filter_map(|s| {
+                    if s.is_err() {
+                        eprintln!("Error when parsing sentence: {:?}", s);
+                    }
+                    s.ok()
+                })
+                .collect();
         }
         _ => std::process::exit(22),
     }
