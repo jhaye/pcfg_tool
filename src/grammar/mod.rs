@@ -1,3 +1,3 @@
 pub mod bare;
-pub mod intified;
+pub mod parse;
 pub mod rule;

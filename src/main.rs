@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use grammar::bare::GrammarBare;
-use grammar::intified::GrammarIntified;
+use grammar::parse::GrammarParse;
 use grammar::rule::{Rule, WeightedRule};
 use sentence::Sentence;
 use sexp::SExp;
@@ -155,7 +155,7 @@ fn main() -> io::Result<()> {
                 std::process::exit(22)
             }
 
-            let mut grammar = GrammarIntified::new(initial_nonterminal.as_str().into());
+            let mut grammar = GrammarParse::new(initial_nonterminal.as_str().into());
 
             let rules_file = File::open(rules)?;
             let lexicon_file = File::open(lexicon)?;
