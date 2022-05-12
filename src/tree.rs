@@ -6,6 +6,11 @@ pub struct Tree<A> {
     pub children: Vec<Tree<A>>,
 }
 
+pub enum NodeType<N, T> {
+    Terminal(T),
+    NonTerminal(N),
+}
+
 impl<A> Tree<A> {
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
