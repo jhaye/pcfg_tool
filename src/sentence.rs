@@ -1,8 +1,10 @@
+use std::slice::Iter;
 use std::str::FromStr;
 
 use nom::bytes::complete::is_not;
 use nom::character::complete::multispace1;
 use nom::combinator::all_consuming;
+
 use nom::error::Error as NError;
 use nom::multi::separated_list1;
 use nom::{Finish, IResult};
@@ -10,6 +12,16 @@ use smallstr::SmallString;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Sentence<A>(Vec<A>);
+
+impl<A> Sentence<A> {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn iter(&self) -> Iter<'_, A> {
+        self.0.iter()
+    }
+}
 
 impl FromStr for Sentence<SmallString<[u8; 8]>> {
     type Err = NError<String>;
