@@ -1,6 +1,7 @@
 use std::hash::Hash;
 use std::str::FromStr;
 
+use float_ord::FloatOrd;
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, tag};
 use nom::character::complete::{multispace0, multispace1};
@@ -28,8 +29,8 @@ pub struct WeightedRule<N: Eq + Hash, T: Eq + Hash, W> {
     pub weight: W,
 }
 
-type ParsedWeightedRule = WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, f64>;
-type NonLexicalRhs = (Vec<SmallString<[u8; 8]>>, f64);
+type ParsedWeightedRule = WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, FloatOrd<f64>>;
+type NonLexicalRhs = (Vec<SmallString<[u8; 8]>>, FloatOrd<f64>);
 
 impl FromStr for ParsedWeightedRule {
     type Err = NError<String>;
@@ -63,7 +64,7 @@ fn parse_lexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
                     lhs: SmallString::from(n),
                     rhs: SmallString::from(t),
                 },
-                weight,
+                weight: FloatOrd(weight),
             },
         )
     })
@@ -90,8 +91,14 @@ fn parse_nonlexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
 }
 
 fn parse_rhs_nonlexical_rule(input: &str) -> IResult<&str, NonLexicalRhs> {
-    many_till(terminated(is_not(" \t"), multispace1), double)(input.trim())
-        .map(|(i, (mut rhs, w))| (i, (rhs.drain(..).map(SmallString::from).collect(), w)))
+    many_till(terminated(is_not(" \t"), multispace1), double)(input.trim()).map(
+        |(i, (mut rhs, w))| {
+            (
+                i,
+                (rhs.drain(..).map(SmallString::from).collect(), FloatOrd(w)),
+            )
+        },
+    )
 }
 
 #[cfg(test)]
