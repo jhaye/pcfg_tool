@@ -11,7 +11,7 @@ use nom::{Finish, IResult};
 use smallstr::SmallString;
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Sentence<A>(Vec<A>);
+pub struct Sentence<A>(pub Vec<A>);
 
 impl<A> Sentence<A> {
     pub fn len(&self) -> usize {

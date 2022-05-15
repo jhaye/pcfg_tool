@@ -49,7 +49,7 @@ where
 impl<N, T> GrammarParse<N, T, FloatOrd<f64>>
 where
     N: Eq + Hash + Clone,
-    T: Eq + Hash,
+    T: Eq + Hash + Clone,
 {
     pub fn new(initial_nonterminal: N) -> Self {
         let mut result = Self {
@@ -151,8 +151,13 @@ where
             }
         }
 
-        // TODO: finish with backtracking
-        None
+        Self::construct_best_tree(
+            &c,
+            cyk_cell_index(c.len(), 0, sentence.len(), num_nt)
+                + (self.initial_nonterminal as usize),
+            sentence,
+            &self.lookup,
+        )
     }
 
     fn unary_closure(&self, c: &mut [(FloatOrd<f64>, Option<BacktraceInfo>)]) {
@@ -189,6 +194,50 @@ where
                             *a as usize,
                         ));
                     }
+                }
+            }
+        }
+    }
+
+    fn construct_best_tree(
+        c: &[(FloatOrd<f64>, Option<BacktraceInfo>)],
+        c_idx: usize,
+        sentence: &Sentence<T>,
+        lookup: &[N],
+    ) -> Option<Tree<NodeType<N, T>>> {
+        let num_nt = lookup.len();
+
+        match c[c_idx].1 {
+            None => None,
+            Some(BacktraceInfo::Term(t)) => Some(Tree {
+                root: NodeType::Terminal(sentence.0[t].clone()),
+                children: vec![],
+            }),
+            Some(BacktraceInfo::Chain(i)) => {
+                if let Some(tree) =
+                    Self::construct_best_tree(c, c_idx - (c_idx % num_nt) + i, sentence, lookup)
+                {
+                    let nt = c_idx % num_nt;
+                    Some(Tree {
+                        root: NodeType::NonTerminal(lookup[nt].clone()),
+                        children: vec![tree],
+                    })
+                } else {
+                    None
+                }
+            }
+            Some(BacktraceInfo::Binary(i, j)) => {
+                if let (Some(tree_i), Some(tree_j)) = (
+                    Self::construct_best_tree(c, i, sentence, lookup),
+                    Self::construct_best_tree(c, j, sentence, lookup),
+                ) {
+                    let nt = c_idx % num_nt;
+                    Some(Tree {
+                        root: NodeType::NonTerminal(lookup[nt].clone()),
+                        children: vec![tree_i, tree_j],
+                    })
+                } else {
+                    None
                 }
             }
         }
