@@ -41,7 +41,7 @@ impl<A: fmt::Display> fmt::Display for Tree<A> {
         if self.is_leaf() {
             write!(f, "{}", self.root)
         } else {
-            let mut result = write!(f, "( {} ", self.root);
+            let mut result = write!(f, "({} ", self.root);
             for child in &self.children {
                 result = result.and(child.fmt(f));
                 result = result.and(write!(f, " "));
