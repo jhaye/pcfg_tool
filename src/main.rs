@@ -203,7 +203,7 @@ fn main() -> io::Result<()> {
                 .map(|l| WeightedRule::from_str(&l))
                 .filter_map(|r| {
                     if r.is_err() {
-                        eprintln!("Error when parsing non-lexical rule: {:?}", r);
+                        eprintln!("Error when parsing lexical rule: {:?}", r);
                     }
 
                     if let Ok(WeightedRule {
