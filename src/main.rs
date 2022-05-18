@@ -224,7 +224,7 @@ fn main() -> io::Result<()> {
 
             let stdin = io::stdin();
             let handle = stdin.lock();
-            let sentences: Vec<_> = handle
+            handle
                 .lines()
                 .filter_map(|l| {
                     if l.is_err() {
@@ -239,7 +239,8 @@ fn main() -> io::Result<()> {
                     }
                     s.ok()
                 })
-                .collect();
+                .map(|s| grammar.cyk(&s).unwrap_or(s.into_noparse()))
+                .for_each(|t| println!("{}", t));
         }
         _ => std::process::exit(22),
     }
