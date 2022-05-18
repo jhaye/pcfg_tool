@@ -10,6 +10,8 @@ use nom::multi::separated_list1;
 use nom::{Finish, IResult};
 use smallstr::SmallString;
 
+use crate::tree::{NodeType, Tree};
+
 #[derive(PartialEq, Eq, Debug)]
 pub struct Sentence<A>(pub Vec<A>);
 
@@ -20,6 +22,22 @@ impl<A> Sentence<A> {
 
     pub fn iter(&self) -> Iter<'_, A> {
         self.0.iter()
+    }
+}
+
+impl<A: From<&'static str>> Sentence<A> {
+    pub fn into_noparse(mut self) -> Tree<NodeType<A, A>> {
+        Tree {
+            root: NodeType::NonTerminal("NOPARSE".into()),
+            children: self
+                .0
+                .drain(..)
+                .map(|w| Tree {
+                    root: NodeType::Terminal(w),
+                    children: vec![],
+                })
+                .collect(),
+        }
     }
 }
 
