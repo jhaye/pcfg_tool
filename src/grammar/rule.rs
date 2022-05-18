@@ -114,7 +114,7 @@ mod test {
                 lhs: SmallString::from("IN"),
                 rhs: SmallString::from("before"),
             },
-            weight: 0.01694915254237288,
+            weight: FloatOrd(0.01694915254237288),
         };
         assert_eq!(rule, parsed);
 
@@ -129,7 +129,7 @@ mod test {
                 lhs: SmallString::from("ADJP"),
                 rhs: vec![SmallString::from("JJ"), SmallString::from("JJ")],
             },
-            weight: 0.14285714285714285,
+            weight: FloatOrd(0.14285714285714285),
         };
         assert_eq!(rule, parsed);
 
