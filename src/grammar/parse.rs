@@ -15,7 +15,7 @@ use crate::Tree;
 /// For `Binary`, the contained  integers refer to the cell in c of that non-terminal.
 /// For `Chain`, it refers to the non-terminal in the same cell in c.
 /// For `Term` it represents the location of the terminal in the input sentence.
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 enum BacktraceInfo {
     Binary(usize, usize),
     Chain(usize),
@@ -100,11 +100,9 @@ where
 
     pub fn cyk(&self, sentence: &Sentence<T>) -> Option<Tree<NodeType<N, T>>> {
         let num_nt = self.lookup.len();
+        let s_len = sentence.len();
 
-        let mut c = vec![
-            Default::default();
-            (sentence.len() * (sentence.len() + 1) / 2) * self.lookup.len()
-        ];
+        let mut c = vec![Default::default(); (s_len * (s_len + 1) / 2) * num_nt];
 
         for (i, word) in sentence.iter().enumerate() {
             if let Some(lexicals) = self.rules_lexical.get_vec(word) {
@@ -113,32 +111,30 @@ where
                     c[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
                 }
             }
-            self.unary_closure(&mut c[i * num_nt..num_nt]);
+            self.unary_closure(&mut c[(i * num_nt)..((i + 1) * num_nt)]);
         }
 
-        for r in 2..sentence.len() {
-            for i in 1..(sentence.len() - r) {
+        for r in 2..=s_len {
+            for i in 0..=(s_len - r) {
                 let j = i + r;
-                let i_j = cyk_cell_index(c.len(), i, r, num_nt);
+                let i_j = cyk_cell_index(i, r, s_len, num_nt);
                 for a in 0..num_nt {
-                    for m in (i + 1)..(j - 1) {
-                        let i_m = cyk_cell_index(c.len(), i, m - i, num_nt);
-                        let m_j = cyk_cell_index(c.len(), m, j - m, num_nt);
+                    for m in (i + 1)..j {
+                        let i_m = cyk_cell_index(i, m - i, s_len, num_nt);
+                        let m_j = cyk_cell_index(m, j - m, s_len, num_nt);
+
                         if let Some(binary_rules) = self.rules_double.get_vec(&(a as u32)) {
                             c[i_j + a] = c[i_j + a].max(
                                 binary_rules
                                     .iter()
                                     .map(|(x, y, weight)| {
+                                        let x = *x as usize;
+                                        let y = *y as usize;
                                         (
                                             FloatOrd(
-                                                weight.0
-                                                    * c[i_m + (*x as usize)].0 .0
-                                                    * c[m_j + (*y as usize)].0 .0,
+                                                weight.0 * c[i_m + (x)].0 .0 * c[m_j + (y)].0 .0,
                                             ),
-                                            Some(BacktraceInfo::Binary(
-                                                i_m + (*x as usize),
-                                                m_j + (*y as usize),
-                                            )),
+                                            Some(BacktraceInfo::Binary(i_m + (x), m_j + (y))),
                                         )
                                     })
                                     .max()
@@ -153,8 +149,7 @@ where
 
         Self::construct_best_tree(
             &c,
-            cyk_cell_index(c.len(), 0, sentence.len(), num_nt)
-                + (self.initial_nonterminal as usize),
+            cyk_cell_index(0, s_len, s_len, num_nt) + (self.initial_nonterminal as usize),
             sentence,
             &self.lookup,
         )
@@ -247,6 +242,190 @@ where
 /// Calculates the index for the corresponding cell in c during the execution of the cyk algorithm.
 /// Individual cells are further subdivided for each non-terminal. This offset has to be added
 /// afterwards.
-const fn cyk_cell_index(c_size: usize, start_pos: usize, span: usize, num_nt: usize) -> usize {
-    ((c_size - (span * (span + 1)) / 2) - 1 + start_pos) * num_nt
+const fn cyk_cell_index(
+    start_pos: usize,
+    span: usize,
+    sentence_len: usize,
+    num_nt: usize,
+) -> usize {
+    let rows_subtract = sentence_len - span + 1;
+    let base_cells_subtract = (rows_subtract * (rows_subtract + 1)) / 2;
+    let num_base_cells = (sentence_len * (sentence_len + 1)) / 2;
+    (num_base_cells - base_cells_subtract + start_pos) * num_nt
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn cyk_base_correct() {
+        let mut grammar = GrammarParse::new("S".to_string());
+
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::NonLexical {
+                lhs: "S".to_string(),
+                rhs: vec!["NP".to_string(), "VP".to_string()],
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::NonLexical {
+                lhs: "VP".to_string(),
+                rhs: vec!["VP".to_string(), "PP".to_string()],
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::NonLexical {
+                lhs: "VP".to_string(),
+                rhs: vec!["V".to_string(), "NP".to_string()],
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::NonLexical {
+                lhs: "PP".to_string(),
+                rhs: vec!["P".to_string(), "NP".to_string()],
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::NonLexical {
+                lhs: "NP".to_string(),
+                rhs: vec!["Det".to_string(), "N".to_string()],
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::NonLexical {
+                lhs: "NP".to_string(),
+                rhs: vec!["PN".to_string()],
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "VP".to_string(),
+                rhs: "eats".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "PN".to_string(),
+                rhs: "she".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "V".to_string(),
+                rhs: "eats".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "P".to_string(),
+                rhs: "with".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "N".to_string(),
+                rhs: "fish".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "N".to_string(),
+                rhs: "fork".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+        grammar.insert_rule(WeightedRule {
+            rule: Rule::Lexical {
+                lhs: "Det".to_string(),
+                rhs: "a".to_string(),
+            },
+            weight: FloatOrd(1.0),
+        });
+
+        let tree = Tree {
+            root: NodeType::NonTerminal("S".to_string()),
+            children: vec![
+                Tree {
+                    root: NodeType::NonTerminal("NP".to_string()),
+                    children: vec![Tree {
+                        root: NodeType::Terminal("she".to_string()),
+                        children: vec![],
+                    }],
+                },
+                Tree {
+                    root: NodeType::NonTerminal("VP".to_string()),
+                    children: vec![
+                        Tree {
+                            root: NodeType::NonTerminal("VP".to_string()),
+                            children: vec![
+                                Tree {
+                                    root: NodeType::Terminal("eats".to_string()),
+                                    children: vec![],
+                                },
+                                Tree {
+                                    root: NodeType::NonTerminal("NP".to_string()),
+                                    children: vec![
+                                        Tree {
+                                            root: NodeType::Terminal("a".to_string()),
+                                            children: vec![],
+                                        },
+                                        Tree {
+                                            root: NodeType::Terminal("fish".to_string()),
+                                            children: vec![],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                        Tree {
+                            root: NodeType::NonTerminal("PP".to_string()),
+                            children: vec![
+                                Tree {
+                                    root: NodeType::Terminal("with".to_string()),
+                                    children: vec![],
+                                },
+                                Tree {
+                                    root: NodeType::NonTerminal("NP".to_string()),
+                                    children: vec![
+                                        Tree {
+                                            root: NodeType::Terminal("a".to_string()),
+                                            children: vec![],
+                                        },
+                                        Tree {
+                                            root: NodeType::Terminal("fork".to_string()),
+                                            children: vec![],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        let sentence = Sentence(vec![
+            "she".to_string(),
+            "eats".to_string(),
+            "a".to_string(),
+            "fish".to_string(),
+            "with".to_string(),
+            "a".to_string(),
+            "fork".to_string(),
+        ]);
+
+        assert_eq!(tree, grammar.cyk(&sentence).unwrap());
+    }
 }
