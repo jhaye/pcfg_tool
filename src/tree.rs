@@ -1,14 +1,11 @@
+use std::fmt;
+
 use crate::SExp;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Tree<A> {
     pub root: A,
     pub children: Vec<Tree<A>>,
-}
-
-pub enum NodeType<N, T> {
-    Terminal(T),
-    NonTerminal(N),
 }
 
 impl<A> Tree<A> {
@@ -35,6 +32,36 @@ impl<A: Clone> From<SExp<A>> for Tree<A> {
                 root,
                 children: vec![],
             },
+        }
+    }
+}
+
+impl<A: fmt::Display> fmt::Display for Tree<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_leaf() {
+            write!(f, "{}", self.root)
+        } else {
+            let mut result = write!(f, "( {} ", self.root);
+            for child in &self.children {
+                result = result.and(child.fmt(f));
+                result = result.and(write!(f, " "));
+            }
+            result.and(write!(f, ")"))
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub enum NodeType<N, T> {
+    Terminal(T),
+    NonTerminal(N),
+}
+
+impl<N: fmt::Display, T: fmt::Display> fmt::Display for NodeType<N, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NodeType::Terminal(t) => t.fmt(f),
+            NodeType::NonTerminal(n) => n.fmt(f),
         }
     }
 }
