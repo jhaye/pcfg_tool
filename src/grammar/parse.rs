@@ -205,14 +205,15 @@ where
         match c[c_idx].1 {
             None => None,
             Some(BacktraceInfo::Term(t)) => Some(Tree {
-                root: NodeType::Terminal(sentence.0[t].clone()),
-                children: vec![],
+                root: NodeType::NonTerminal(lookup[c_idx % num_nt].clone()),
+                children: vec![Tree {
+                    root: NodeType::Terminal(sentence.0[t].clone()),
+                    children: vec![],
+                }],
             }),
             Some(BacktraceInfo::Chain(i)) => {
-                if let Some(tree) =
-                    Self::construct_best_tree(c, c_idx - (c_idx % num_nt) + i, sentence, lookup)
-                {
-                    let nt = c_idx % num_nt;
+                let nt = c_idx % num_nt;
+                if let Some(tree) = Self::construct_best_tree(c, c_idx - nt + i, sentence, lookup) {
                     Some(Tree {
                         root: NodeType::NonTerminal(lookup[nt].clone()),
                         children: vec![tree],
