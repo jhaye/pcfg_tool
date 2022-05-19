@@ -2,7 +2,7 @@ use std::collections::BinaryHeap;
 use std::hash::Hash;
 
 use float_ord::FloatOrd;
-use fxhash::FxHashMap;
+use fxhash::{FxBuildHasher, FxHashMap};
 use multimap::MultiMap;
 
 use super::rule::{Rule, WeightedRule};
@@ -34,13 +34,13 @@ where
 {
     initial_nonterminal: u32,
     // Lexical rules which we search by terminal on the RHS.
-    rules_lexical: MultiMap<T, (u32, W)>,
+    rules_lexical: MultiMap<T, (u32, W), FxBuildHasher>,
     // Non-lexical rules with one non-terminals on the RHS.
     // We search by the non-terminal on the RHS.
-    rules_chain: MultiMap<u32, (u32, W)>,
+    rules_chain: MultiMap<u32, (u32, W), FxBuildHasher>,
     // Non-lexical rules with two non-terminals on the RHS.
     // We search by non-terminal on the LHS.
-    rules_double: MultiMap<u32, (u32, u32, W)>,
+    rules_double: MultiMap<u32, (u32, u32, W), FxBuildHasher>,
     // Lookup table for intified non-terminals.
     lookup: Vec<N>,
     lookup_index: FxHashMap<N, u32>,
@@ -54,9 +54,9 @@ where
     pub fn new(initial_nonterminal: N) -> Self {
         let mut result = Self {
             initial_nonterminal: 0,
-            rules_lexical: MultiMap::new(),
+            rules_lexical: MultiMap::default(),
             rules_chain: MultiMap::default(),
-            rules_double: MultiMap::new(),
+            rules_double: MultiMap::default(),
             lookup: vec![],
             lookup_index: FxHashMap::default(),
         };
