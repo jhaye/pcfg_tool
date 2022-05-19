@@ -361,8 +361,11 @@ mod test {
                 Tree {
                     root: NodeType::NonTerminal("NP".to_string()),
                     children: vec![Tree {
-                        root: NodeType::Terminal("she".to_string()),
-                        children: vec![],
+                        root: NodeType::NonTerminal("PN".to_string()),
+                        children: vec![Tree {
+                            root: NodeType::Terminal("she".to_string()),
+                            children: vec![],
+                        }],
                     }],
                 },
                 Tree {
@@ -372,19 +375,28 @@ mod test {
                             root: NodeType::NonTerminal("VP".to_string()),
                             children: vec![
                                 Tree {
-                                    root: NodeType::Terminal("eats".to_string()),
-                                    children: vec![],
+                                    root: NodeType::NonTerminal("V".to_string()),
+                                    children: vec![Tree {
+                                        root: NodeType::Terminal("eats".to_string()),
+                                        children: vec![],
+                                    }],
                                 },
                                 Tree {
                                     root: NodeType::NonTerminal("NP".to_string()),
                                     children: vec![
                                         Tree {
-                                            root: NodeType::Terminal("a".to_string()),
-                                            children: vec![],
+                                            root: NodeType::NonTerminal("Det".to_string()),
+                                            children: vec![Tree {
+                                                root: NodeType::Terminal("a".to_string()),
+                                                children: vec![],
+                                            }],
                                         },
                                         Tree {
-                                            root: NodeType::Terminal("fish".to_string()),
-                                            children: vec![],
+                                            root: NodeType::NonTerminal("N".to_string()),
+                                            children: vec![Tree {
+                                                root: NodeType::Terminal("fish".to_string()),
+                                                children: vec![],
+                                            }],
                                         },
                                     ],
                                 },
@@ -394,19 +406,28 @@ mod test {
                             root: NodeType::NonTerminal("PP".to_string()),
                             children: vec![
                                 Tree {
-                                    root: NodeType::Terminal("with".to_string()),
-                                    children: vec![],
+                                    root: NodeType::NonTerminal("P".to_string()),
+                                    children: vec![Tree {
+                                        root: NodeType::Terminal("with".to_string()),
+                                        children: vec![],
+                                    }],
                                 },
                                 Tree {
                                     root: NodeType::NonTerminal("NP".to_string()),
                                     children: vec![
                                         Tree {
-                                            root: NodeType::Terminal("a".to_string()),
-                                            children: vec![],
+                                            root: NodeType::NonTerminal("Det".to_string()),
+                                            children: vec![Tree {
+                                                root: NodeType::Terminal("a".to_string()),
+                                                children: vec![],
+                                            }],
                                         },
                                         Tree {
-                                            root: NodeType::Terminal("fork".to_string()),
-                                            children: vec![],
+                                            root: NodeType::NonTerminal("N".to_string()),
+                                            children: vec![Tree {
+                                                root: NodeType::Terminal("fork".to_string()),
+                                                children: vec![],
+                                            }],
                                         },
                                     ],
                                 },
