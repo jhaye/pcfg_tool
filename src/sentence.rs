@@ -100,7 +100,7 @@ mod test {
     fn noparse_construction() {
         let sentence = Sentence::from_str("A little test sentence .").unwrap();
         assert_eq!(
-            "(NOPARSE A little test sentence . )".to_string(),
+            "(NOPARSE A little test sentence .)".to_string(),
             format!("{}", sentence.into_noparse())
         );
     }
