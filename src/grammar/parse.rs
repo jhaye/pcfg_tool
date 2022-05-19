@@ -447,7 +447,17 @@ mod test {
             "a".to_string(),
             "fork".to_string(),
         ]);
-
         assert_eq!(tree, grammar.cyk(&sentence).unwrap());
+
+        let sentence = Sentence(vec![
+            "a".to_string(),
+            "fish".to_string(),
+            "doesn't".to_string(),
+            "eat".to_string(),
+            "with".to_string(),
+            "a".to_string(),
+            "fork".to_string(),
+        ]);
+        assert!(grammar.cyk(&sentence).is_none());
     }
 }
