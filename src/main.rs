@@ -8,14 +8,15 @@ use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use clap::{ArgEnum, Parser, Subcommand};
+use rayon::prelude::*;
+
 use grammar::bare::GrammarBare;
 use grammar::parse::GrammarParse;
 use grammar::rule::{Rule, WeightedRule};
 use sentence::Sentence;
 use sexp::SExp;
 use tree::Tree;
-
-use clap::{ArgEnum, Parser, Subcommand};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -222,25 +223,41 @@ fn main() -> io::Result<()> {
                 })
                 .for_each(|r| grammar.insert_rule(r));
 
+            const LINES_READ: usize = 128;
             let stdin = io::stdin();
-            let handle = stdin.lock();
-            handle
-                .lines()
-                .filter_map(|l| {
-                    if l.is_err() {
-                        eprintln!("Error when reading line: {:?}", l);
+            let mut handle = stdin.lock();
+            let mut input_buf = String::new();
+            let mut done = false;
+            while !done {
+                for _ in 0..LINES_READ {
+                    match handle.read_line(&mut input_buf) {
+                        Ok(0) => {
+                            done = true;
+                            break;
+                        }
+                        Ok(_) => {}
+                        Err(x) => eprintln!("Error when reading line: {:?}", x),
                     }
-                    l.ok()
-                })
-                .map(|l| Sentence::from_str(&l))
-                .filter_map(|s| {
-                    if s.is_err() {
-                        eprintln!("Error when parsing sentence: {:?}", s);
-                    }
-                    s.ok()
-                })
-                .map(|s| grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()))
-                .for_each(|t| println!("{}", t));
+                }
+
+                let trees: Vec<_> = input_buf
+                    .par_lines()
+                    .map(|l| Sentence::from_str(&l))
+                    .filter_map(|s| {
+                        if s.is_err() {
+                            eprintln!("Error when parsing sentence: {:?}", s);
+                        }
+                        s.ok()
+                    })
+                    .map(|s| grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()))
+                    .collect();
+
+                for tree in trees {
+                    println!("{}", tree);
+                }
+
+                input_buf.clear();
+            }
         }
         _ => std::process::exit(22),
     }
