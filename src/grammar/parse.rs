@@ -213,14 +213,10 @@ where
             }),
             Some(BacktraceInfo::Chain(i)) => {
                 let nt = c_idx % num_nt;
-                if let Some(tree) = Self::construct_best_tree(c, c_idx - nt + i, sentence, lookup) {
-                    Some(Tree {
-                        root: NodeType::NonTerminal(lookup[nt].clone()),
-                        children: vec![tree],
-                    })
-                } else {
-                    None
-                }
+                Self::construct_best_tree(c, c_idx - nt + i, sentence, lookup).map(|tree| Tree {
+                    root: NodeType::NonTerminal(lookup[nt].clone()),
+                    children: vec![tree],
+                })
             }
             Some(BacktraceInfo::Binary(i, j)) => {
                 if let (Some(tree_i), Some(tree_j)) = (

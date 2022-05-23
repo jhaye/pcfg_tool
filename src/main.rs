@@ -239,7 +239,7 @@ fn main() -> io::Result<()> {
                     }
                     s.ok()
                 })
-                .map(|s| grammar.cyk(&s).unwrap_or(s.into_noparse()))
+                .map(|s| grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()))
                 .for_each(|t| println!("{}", t));
         }
         _ => std::process::exit(22),
