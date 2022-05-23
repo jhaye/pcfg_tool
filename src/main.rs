@@ -242,7 +242,7 @@ fn main() -> io::Result<()> {
 
                 let trees: Vec<_> = input_buf
                     .par_lines()
-                    .map(|l| Sentence::from_str(&l))
+                    .map(Sentence::from_str)
                     .filter_map(|s| {
                         if s.is_err() {
                             eprintln!("Error when parsing sentence: {:?}", s);
