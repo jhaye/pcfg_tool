@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt;
 use std::str::FromStr;
 
@@ -12,15 +13,17 @@ use nom::sequence::{preceded, tuple};
 use nom::{Finish, IResult};
 use smallstr::SmallString;
 
+use crate::tree::Tree;
+
 #[derive(Debug, PartialEq)]
-struct MarkovizedNode<A> {
-    label: A,
-    parents: Vec<A>,
-    ancestors: Vec<A>,
+pub struct MarkovizedNode<A> {
+    pub label: A,
+    pub children: Vec<A>,
+    pub ancestors: Vec<A>,
 }
 
 #[derive(Debug, PartialEq)]
-enum Binarized<A> {
+pub enum Binarized<A> {
     Markovized(MarkovizedNode<A>),
     Bare(A),
 }
@@ -67,13 +70,13 @@ fn parse_markovized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8
             ),
         )),
     ))(input)
-    .map(|(i, (label, parents, ancestors))| {
+    .map(|(i, (label, children, ancestors))| {
         (
             i,
             Binarized::Markovized(MarkovizedNode {
                 label: SmallString::from(label),
-                parents: parents
-                    .map(|mut v| v.drain(..).map(|p| SmallString::from(p)).collect())
+                children: children
+                    .map(|mut v| v.drain(..).map(|c| SmallString::from(c)).collect())
                     .unwrap_or_default(),
                 ancestors: ancestors
                     .map(|mut v| v.drain(..).map(|a| SmallString::from(a)).collect())
@@ -87,9 +90,9 @@ impl<A: fmt::Display> fmt::Display for MarkovizedNode<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut result = write!(f, "{}", self.label);
 
-        if !self.parents.is_empty() {
+        if !self.children.is_empty() {
             result = result.and(write!(f, "|<"));
-            for (i, parent) in self.parents.iter().enumerate() {
+            for (i, parent) in self.children.iter().enumerate() {
                 if i == 0 {
                     result = result.and(write!(f, "{}", parent));
                 } else {
@@ -117,6 +120,26 @@ impl<A: fmt::Display> fmt::Display for MarkovizedNode<A> {
     }
 }
 
+impl<A: Borrow<str>> Tree<A> {
+    pub fn parse_markovized(mut self) -> Tree<Binarized<SmallString<[u8; 8]>>> {
+        if self.is_leaf() {
+            Tree {
+                root: Binarized::from_str(self.root.borrow()).unwrap(),
+                children: vec![],
+            }
+        } else {
+            Tree {
+                root: Binarized::from_str(self.root.borrow()).unwrap(),
+                children: self
+                    .children
+                    .drain(..)
+                    .map(|c| c.parse_markovized())
+                    .collect(),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -125,7 +148,7 @@ mod test {
     fn markovized_node_print() {
         let bare = MarkovizedNode {
             label: "label",
-            parents: vec![],
+            children: vec![],
             ancestors: vec![],
         };
 
@@ -133,7 +156,7 @@ mod test {
 
         let single = MarkovizedNode {
             label: "label",
-            parents: vec!["parent"],
+            children: vec!["parent"],
             ancestors: vec!["ancestor"],
         };
 
@@ -144,7 +167,7 @@ mod test {
 
         let multiple = MarkovizedNode {
             label: "label",
-            parents: vec!["p1", "p2"],
+            children: vec!["p1", "p2"],
             ancestors: vec!["a1", "a2"],
         };
 
@@ -161,7 +184,7 @@ mod test {
         assert_eq!(
             Binarized::Markovized(MarkovizedNode {
                 label: SmallString::from("label"),
-                parents: vec![SmallString::from("parent")],
+                children: vec![SmallString::from("parent")],
                 ancestors: vec![SmallString::from("ancestor")]
             }),
             Binarized::from_str("label|<parent>^<ancestor>").unwrap()
@@ -170,7 +193,7 @@ mod test {
         assert_eq!(
             Binarized::Markovized(MarkovizedNode {
                 label: SmallString::from("label"),
-                parents: vec![SmallString::from("parent")],
+                children: vec![SmallString::from("parent")],
                 ancestors: vec![]
             }),
             Binarized::from_str("label|<parent>").unwrap()
@@ -179,7 +202,7 @@ mod test {
         assert_eq!(
             Binarized::Markovized(MarkovizedNode {
                 label: SmallString::from("label"),
-                parents: vec![],
+                children: vec![],
                 ancestors: vec![SmallString::from("ancestor")]
             }),
             Binarized::from_str("label^<ancestor>").unwrap()
@@ -188,7 +211,7 @@ mod test {
         assert_eq!(
             Binarized::Markovized(MarkovizedNode {
                 label: SmallString::from("label"),
-                parents: vec![SmallString::from("p1"), SmallString::from("p2")],
+                children: vec![SmallString::from("p1"), SmallString::from("p2")],
                 ancestors: vec![SmallString::from("a1"), SmallString::from("a2")]
             }),
             Binarized::from_str("label|<p1,p2>^<a1,a2>").unwrap()

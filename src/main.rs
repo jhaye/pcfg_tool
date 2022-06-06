@@ -1,4 +1,4 @@
-pub mod binarize;
+pub mod binarized;
 pub mod grammar;
 pub mod sentence;
 pub mod sexp;
