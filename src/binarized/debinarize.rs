@@ -2,7 +2,7 @@ use super::node::{Binarized, MarkovizedNode};
 use crate::tree::Tree;
 
 impl<A> Tree<Binarized<A>> {
-    fn debinarize(mut self) -> Tree<A> {
+    pub fn debinarize(mut self) -> Tree<A> {
         if self.is_leaf() {
             let root = match self.root {
                 Binarized::Bare(a) => a,
