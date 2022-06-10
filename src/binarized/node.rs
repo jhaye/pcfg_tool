@@ -57,7 +57,7 @@ fn parse_markovized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8
             tag("|"),
             delimited(
                 tag("<"),
-                separated_list0(tag(","), is_not("|^<>,")),
+                separated_list0(tag(","), alt((tag(","), is_not("|^<>,")))),
                 tag(">"),
             ),
         )),
@@ -65,7 +65,7 @@ fn parse_markovized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8
             tag("^"),
             delimited(
                 tag("<"),
-                separated_list0(tag(","), is_not("|^<>,")),
+                separated_list0(tag(","), alt((tag(","), is_not("|^<>,")))),
                 tag(">"),
             ),
         )),
@@ -215,6 +215,15 @@ mod test {
                 ancestors: vec![SmallString::from("a1"), SmallString::from("a2")]
             }),
             Binarized::from_str("label|<p1,p2>^<a1,a2>").unwrap()
+        );
+
+        assert_eq!(
+            Binarized::Markovized(MarkovizedNode {
+                label: SmallString::from("label"),
+                children: vec![SmallString::from(","), SmallString::from("p")],
+                ancestors: vec![SmallString::from("p"), SmallString::from(",")]
+            }),
+            Binarized::from_str("label|<,,p>^<p,,>").unwrap()
         );
     }
 }
