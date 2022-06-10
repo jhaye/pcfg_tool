@@ -13,25 +13,19 @@ impl<A> Tree<Binarized<A>> {
                 root,
                 children: vec![],
             }
+        } else if let Binarized::Markovized(_) = self.children.iter().last().unwrap().root {
+            let last = self.children.pop().unwrap();
+            self.children.extend(last.children);
+            self.debinarize()
         } else {
-            if let Binarized::Markovized(_) = self.children.iter().last().unwrap().root {
-                let last = self.children.pop().unwrap();
-                self.children.extend(last.children);
-                self.debinarize()
-            } else {
-                let root = match self.root {
-                    Binarized::Bare(a) => a,
-                    Binarized::Markovized(MarkovizedNode {
-                        label: a,
-                        children: _,
-                        ancestors: _,
-                    }) => a,
-                };
+            let root = match self.root {
+                Binarized::Bare(a) => a,
+                Binarized::Markovized(MarkovizedNode { label: a, .. }) => a,
+            };
 
-                Tree {
-                    root,
-                    children: self.children.drain(..).map(|c| c.debinarize()).collect(),
-                }
+            Tree {
+                root,
+                children: self.children.drain(..).map(|c| c.debinarize()).collect(),
             }
         }
     }

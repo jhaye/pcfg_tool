@@ -76,10 +76,10 @@ fn parse_markovized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8
             Binarized::Markovized(MarkovizedNode {
                 label: SmallString::from(label),
                 children: children
-                    .map(|mut v| v.drain(..).map(|c| SmallString::from(c)).collect())
+                    .map(|mut v| v.drain(..).map(SmallString::from).collect())
                     .unwrap_or_default(),
                 ancestors: ancestors
-                    .map(|mut v| v.drain(..).map(|a| SmallString::from(a)).collect())
+                    .map(|mut v| v.drain(..).map(SmallString::from).collect())
                     .unwrap_or_default(),
             }),
         )
