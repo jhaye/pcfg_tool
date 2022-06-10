@@ -260,6 +260,41 @@ fn main() -> io::Result<()> {
                 input_buf.clear();
             }
         }
+        Commands::Debinarise => {
+            const LINES_READ: usize = 128;
+            let stdin = io::stdin();
+            let mut handle = stdin.lock();
+            let mut input_buf = String::new();
+            let mut done = false;
+            while !done {
+                for _ in 0..LINES_READ {
+                    match handle.read_line(&mut input_buf) {
+                        Ok(0) => {
+                            done = true;
+                            break;
+                        }
+                        Ok(_) => {}
+                        Err(x) => eprintln!("Error when reading line: {:?}", x),
+                    }
+                }
+
+                input_buf
+                    .par_lines()
+                    .map(SExp::from_str)
+                    .filter_map(|s| {
+                        if s.is_err() {
+                            eprintln!("Error when parsing SExp: {:?}", s);
+                        }
+                        s.ok()
+                    })
+                    .map(Tree::from)
+                    .map(Tree::parse_markovized)
+                    .map(Tree::debinarize)
+                    .for_each(|t| println!("{}", t));
+
+                input_buf.clear();
+            }
+        }
         _ => std::process::exit(22),
     }
 
