@@ -3,6 +3,7 @@ pub mod grammar;
 pub mod sentence;
 pub mod sexp;
 pub mod tree;
+pub mod unk;
 
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -10,6 +11,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{ArgEnum, Parser, Subcommand};
+use fxhash::FxHashMap;
 use rayon::prelude::*;
 
 use grammar::bare::GrammarBare;
@@ -66,7 +68,7 @@ enum Commands {
     Debinarise,
     Unk {
         #[clap(short, long)]
-        threshold: Option<u32>,
+        threshold: u32,
     },
     Smooth {
         #[clap(short, long)]
@@ -294,6 +296,36 @@ fn main() -> io::Result<()> {
 
                 input_buf.clear();
             }
+        }
+        Commands::Unk { threshold } => {
+            let stdin = io::stdin();
+            let handle = stdin.lock();
+
+            let mut word_count = FxHashMap::default();
+
+            let trees: Vec<_> = handle
+                .lines()
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
+                .map(|l| SExp::from_str(&l))
+                .filter_map(|s| {
+                    if s.is_err() {
+                        eprintln!("Error when parsing SExp: {:?}", s);
+                    }
+                    s.ok()
+                })
+                .map(Tree::from)
+                .collect();
+
+            for tree in trees {
+                unk::count_words(&tree, &mut word_count);
+            }
+
+            // TODO: shrink word_count with threshold, unkify trees, and print them
         }
         _ => std::process::exit(22),
     }
