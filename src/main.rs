@@ -68,7 +68,7 @@ enum Commands {
     Debinarise,
     Unk {
         #[clap(short, long)]
-        threshold: u32,
+        threshold: usize,
     },
     Smooth {
         #[clap(short, long)]
@@ -303,7 +303,7 @@ fn main() -> io::Result<()> {
 
             let mut word_count = FxHashMap::default();
 
-            let trees: Vec<_> = handle
+            let mut trees: Vec<_> = handle
                 .lines()
                 .filter_map(|l| {
                     if l.is_err() {
@@ -321,11 +321,18 @@ fn main() -> io::Result<()> {
                 .map(Tree::from)
                 .collect();
 
-            for tree in trees {
-                unk::count_words(&tree, &mut word_count);
+            for tree in &trees {
+                unk::count_words(tree, &mut word_count);
             }
 
-            // TODO: shrink word_count with threshold, unkify trees, and print them
+            // We keep all words that we don't want to unkify.
+            word_count.retain(|_, v| *v >= *threshold);
+            let word_count = word_count;
+
+            trees.iter_mut().for_each(|t| {
+                t.unkify(&word_count);
+                println!("{}", t);
+            });
         }
         _ => std::process::exit(22),
     }
