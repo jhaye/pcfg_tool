@@ -12,6 +12,34 @@ impl<A> Tree<A> {
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
     }
+
+    pub fn leaves(&self) -> Vec<&A> {
+        if self.is_leaf() {
+            vec![&self.root]
+        } else {
+            self.children
+                .iter()
+                .map(|c| c.leaves())
+                .fold(vec![], |mut acc, mut x| {
+                    acc.append(&mut x);
+                    acc
+                })
+        }
+    }
+
+    pub fn leaves_mut(&mut self) -> Vec<&mut A> {
+        if self.is_leaf() {
+            vec![&mut self.root]
+        } else {
+            self.children
+                .iter_mut()
+                .map(|c| c.leaves_mut())
+                .fold(vec![], |mut acc, mut x| {
+                    acc.append(&mut x);
+                    acc
+                })
+        }
+    }
 }
 
 impl<A: Clone> From<SExp<A>> for Tree<A> {
@@ -69,6 +97,7 @@ impl<N: fmt::Display, T: fmt::Display> fmt::Display for NodeType<N, T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn sexp_tree_conversion() {
@@ -112,5 +141,18 @@ mod test {
                 ])
             ])),
         );
+    }
+
+    #[test]
+    fn get_leaves() {
+        let tree = Tree::from(SExp::from_str("(S (NP a b) c)").unwrap());
+        let tree_leaves = tree.leaves();
+        let mut leaves_iter = tree_leaves.iter();
+        let leaf_a = leaves_iter.next().unwrap();
+        assert_eq!("a".to_string(), (**leaf_a).clone().into_string());
+        let leaf_b = leaves_iter.next().unwrap();
+        assert_eq!("b".to_string(), (**leaf_b).clone().into_string());
+        let leaf_c = leaves_iter.next().unwrap();
+        assert_eq!("c".to_string(), (**leaf_c).clone().into_string());
     }
 }
