@@ -148,8 +148,7 @@ fn main() -> io::Result<()> {
             astar,
         } => {
             // Filter out all unsupported options
-            if *unking
-                || *smoothing
+            if *smoothing
                 || threshold_beam.is_some()
                 || rank_beam.is_some()
                 || kbest.is_some()
@@ -243,17 +242,43 @@ fn main() -> io::Result<()> {
                     }
                 }
 
-                let trees: Vec<_> = input_buf
-                    .par_lines()
-                    .map(Sentence::from_str)
-                    .filter_map(|s| {
-                        if s.is_err() {
-                            eprintln!("Error when parsing sentence: {:?}", s);
-                        }
-                        s.ok()
-                    })
-                    .map(|s| grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()))
-                    .collect();
+                let trees: Vec<_> = if *unking {
+                    input_buf
+                        .par_lines()
+                        .map(Sentence::from_str)
+                        .filter_map(|s| {
+                            if s.is_err() {
+                                eprintln!("Error when parsing sentence: {:?}", s);
+                            }
+                            s.ok()
+                        })
+                        .map(|mut s| {
+                            let wmap = s.unkify(&grammar.rules_lexical);
+                            (s, wmap)
+                        })
+                        .map(|(s, wmap)| {
+                            (grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()), wmap)
+                        })
+                        .map(|(mut t, wmap)| {
+                            if let Some(wmap) = wmap {
+                                t.deunkify(wmap);
+                            }
+                            t
+                        })
+                        .collect()
+                } else {
+                    input_buf
+                        .par_lines()
+                        .map(Sentence::from_str)
+                        .filter_map(|s| {
+                            if s.is_err() {
+                                eprintln!("Error when parsing sentence: {:?}", s);
+                            }
+                            s.ok()
+                        })
+                        .map(|s| grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()))
+                        .collect()
+                };
 
                 for tree in trees {
                     println!("{}", tree);
