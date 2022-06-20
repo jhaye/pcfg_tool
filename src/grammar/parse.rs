@@ -34,7 +34,7 @@ where
 {
     initial_nonterminal: u32,
     // Lexical rules which we search by terminal on the RHS.
-    rules_lexical: MultiMap<T, (u32, W), FxBuildHasher>,
+    pub rules_lexical: MultiMap<T, (u32, W), FxBuildHasher>,
     // Non-lexical rules with one non-terminals on the RHS.
     // We search by the non-terminal on the RHS.
     rules_chain: MultiMap<u32, (u32, W), FxBuildHasher>,
