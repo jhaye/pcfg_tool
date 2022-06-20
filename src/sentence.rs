@@ -1,4 +1,4 @@
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 use std::str::FromStr;
 
 use nom::bytes::complete::is_not;
@@ -26,6 +26,10 @@ impl<A> Sentence<A> {
 
     pub fn iter(&self) -> Iter<'_, A> {
         self.0.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<'_, A> {
+        self.0.iter_mut()
     }
 }
 
