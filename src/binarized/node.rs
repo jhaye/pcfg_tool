@@ -28,6 +28,15 @@ pub enum Binarized<A> {
     Bare(A),
 }
 
+impl<A> Binarized<A> {
+    pub fn extract_label(&self) -> &A {
+        match self {
+            Binarized::Markovized(MarkovizedNode { label, .. }) => label,
+            Binarized::Bare(a) => a,
+        }
+    }
+}
+
 impl FromStr for Binarized<SmallString<[u8; 8]>> {
     type Err = NError<String>;
 
@@ -117,6 +126,15 @@ impl<A: fmt::Display> fmt::Display for MarkovizedNode<A> {
         }
 
         result
+    }
+}
+
+impl<A: fmt::Display> fmt::Display for Binarized<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Binarized::Markovized(a) => a.fmt(f),
+            Binarized::Bare(a) => a.fmt(f),
+        }
     }
 }
 

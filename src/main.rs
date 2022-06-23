@@ -59,9 +59,9 @@ enum Commands {
     },
     Binarise {
         #[clap(short, long, default_value_t = 999)]
-        horizontal: u32,
+        horizontal: usize,
         #[clap(short, long, default_value_t = 1)]
-        vertical: u32,
+        vertical: usize,
         #[clap(long)]
         help: bool,
     },
@@ -286,6 +286,33 @@ fn main() -> io::Result<()> {
 
                 input_buf.clear();
             }
+        }
+        Commands::Binarise {
+            horizontal,
+            vertical,
+            ..
+        } => {
+            let stdin = io::stdin();
+            let handle = stdin.lock();
+
+            handle
+                .lines()
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
+                .map(|l| SExp::from_str(&l))
+                .filter_map(|s| {
+                    if s.is_err() {
+                        eprintln!("Error when parsing SExp: {:?}", s);
+                    }
+                    s.ok()
+                })
+                .map(Tree::from)
+                .map(|t| t.markovize(*vertical, *horizontal, &[]))
+                .for_each(|t| println!("{}", t));
         }
         Commands::Debinarise => {
             const LINES_READ: usize = 128;

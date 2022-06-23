@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::SExp;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Tree<A> {
     pub root: A,
     pub children: Vec<Tree<A>>,
