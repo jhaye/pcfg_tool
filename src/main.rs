@@ -2,6 +2,7 @@ pub mod binarized;
 pub mod grammar;
 pub mod sentence;
 pub mod sexp;
+pub mod signature;
 pub mod tree;
 pub mod unk;
 
