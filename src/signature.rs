@@ -25,7 +25,7 @@ pub struct UnkSignature {
 
 impl UnkSignature {
     pub fn new(word: &str, idx: usize) -> Self {
-        if word.len() == 0 {
+        if word.is_empty() {
             UnkSignature {
                 letter_suffix: None,
                 number_suffix: None,
@@ -74,14 +74,12 @@ impl UnkSignature {
                 } else {
                     LetterSuffix::Capitalised
                 }
+            } else if has_lower {
+                LetterSuffix::HasLower
+            } else if has_alphabetic {
+                LetterSuffix::HasLetter
             } else {
-                if has_lower {
-                    LetterSuffix::HasLower
-                } else if has_alphabetic {
-                    LetterSuffix::HasLetter
-                } else {
-                    LetterSuffix::NoLetter
-                }
+                LetterSuffix::NoLetter
             };
             let number_suffix = if has_numeric && !has_nonnumeric {
                 Some(NumberSuffix::FullNumber)
