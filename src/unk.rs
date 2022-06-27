@@ -4,6 +4,7 @@ use multimap::MultiMap;
 use std::hash::Hash;
 
 use crate::sentence::Sentence;
+use crate::signature::UnkSignature;
 use crate::tree::{NodeType, Tree};
 
 pub fn count_words<T: Eq + Hash + Clone>(tree: &Tree<T>, word_count: &mut FxHashMap<T, usize>) {
@@ -20,7 +21,7 @@ pub fn count_words<T: Eq + Hash + Clone>(tree: &Tree<T>, word_count: &mut FxHash
     }
 }
 
-impl<A: Eq + Hash + From<&'static str>> Tree<A> {
+impl<A: Eq + Hash + From<&'static str> + From<String> + AsRef<str>> Tree<A> {
     /// Replaces words in this constituent tree with "UNK",
     /// if it is not contained in the keys of `words`.
     pub fn unkify(&mut self, words: &FxHashMap<A, usize>) {
@@ -30,6 +31,17 @@ impl<A: Eq + Hash + From<&'static str>> Tree<A> {
 
         for child in &mut self.children {
             child.unkify(words);
+        }
+    }
+
+    /// Replaces words in this constituent tree with their respective
+    /// signature, if it is not contained in the keys of `words`.
+    pub fn smooth(&mut self, words: &FxHashMap<A, usize>) {
+        for (i, leaf) in self.leaves_mut().drain(..).enumerate() {
+            if !words.contains_key(leaf) {
+                let signature = UnkSignature::new(leaf.as_ref(), i);
+                *leaf = signature.to_string().into();
+            }
         }
     }
 }
@@ -46,7 +58,7 @@ impl<N, T> Tree<NodeType<N, T>> {
 
 impl<A> Sentence<A>
 where
-    A: Eq + Hash + From<&'static str> + Clone,
+    A: Eq + Hash + From<&'static str> + From<String> + AsRef<str> + Clone,
 {
     /// For use with `GrammarParse`'s `rules_lexical`.
     pub fn unkify(
@@ -59,6 +71,28 @@ where
             if !words.contains_key(word) {
                 result.push((i, word.clone()));
                 *word = "UNK".into();
+            }
+        }
+
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
+    /// For use with `GrammarParse`'s `rules_lexical`.
+    pub fn smooth(
+        &mut self,
+        words: &MultiMap<A, impl Default, impl BuildHasher>,
+    ) -> Option<Vec<(usize, A)>> {
+        let mut result = vec![];
+
+        for (i, word) in self.iter_mut().enumerate() {
+            if !words.contains_key(word) {
+                result.push((i, word.clone()));
+                let signature = UnkSignature::new(word.as_ref(), i);
+                *word = signature.to_string().into();
             }
         }
 

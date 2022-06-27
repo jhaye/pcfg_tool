@@ -73,7 +73,7 @@ enum Commands {
     },
     Smooth {
         #[clap(short, long)]
-        threshold: Option<u32>,
+        threshold: usize,
     },
     Outside {
         rules: String,
@@ -149,14 +149,17 @@ fn main() -> io::Result<()> {
             astar,
         } => {
             // Filter out all unsupported options
-            if *smoothing
-                || threshold_beam.is_some()
+            if threshold_beam.is_some()
                 || rank_beam.is_some()
                 || kbest.is_some()
                 || astar.is_some()
                 || *paradigma == ParsingParadigma::Deductive
             {
                 std::process::exit(22)
+            }
+
+            if *unking && *smoothing {
+                panic!("Unking and smoothing are mutually exclusive. Only use one!")
             }
 
             let mut grammar = GrammarParse::new(initial_nonterminal.as_str().into());
@@ -243,7 +246,7 @@ fn main() -> io::Result<()> {
                     }
                 }
 
-                let trees: Vec<_> = if *unking {
+                let trees: Vec<_> = if *unking || *smoothing {
                     input_buf
                         .par_lines()
                         .map(Sentence::from_str)
@@ -254,7 +257,14 @@ fn main() -> io::Result<()> {
                             s.ok()
                         })
                         .map(|mut s| {
-                            let wmap = s.unkify(&grammar.rules_lexical);
+                            // Unking and smoothing are effectively the same operation, but
+                            // smoothing is more fine grained.
+                            let wmap = if *unking {
+                                s.unkify(&grammar.rules_lexical)
+                            } else {
+                                // smoothing
+                                s.smooth(&grammar.rules_lexical)
+                            };
                             (s, wmap)
                         })
                         .map(|(s, wmap)| {
@@ -384,6 +394,43 @@ fn main() -> io::Result<()> {
 
             trees.iter_mut().for_each(|t| {
                 t.unkify(&word_count);
+                println!("{}", t);
+            });
+        }
+        Commands::Smooth { threshold } => {
+            let stdin = io::stdin();
+            let handle = stdin.lock();
+
+            let mut word_count = FxHashMap::default();
+
+            let mut trees: Vec<_> = handle
+                .lines()
+                .filter_map(|l| {
+                    if l.is_err() {
+                        eprintln!("Error when reading line: {:?}", l);
+                    }
+                    l.ok()
+                })
+                .map(|l| SExp::from_str(&l))
+                .filter_map(|s| {
+                    if s.is_err() {
+                        eprintln!("Error when parsing SExp: {:?}", s);
+                    }
+                    s.ok()
+                })
+                .map(Tree::from)
+                .collect();
+
+            for tree in &trees {
+                unk::count_words(tree, &mut word_count);
+            }
+
+            // We keep all words that we don't want to unkify.
+            word_count.retain(|_, v| *v >= *threshold);
+            let word_count = word_count;
+
+            trees.iter_mut().for_each(|t| {
+                t.smooth(&word_count);
                 println!("{}", t);
             });
         }
