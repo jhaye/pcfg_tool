@@ -361,81 +361,59 @@ fn main() -> io::Result<()> {
             }
         }
         Commands::Unk { threshold } => {
-            let stdin = io::stdin();
-            let handle = stdin.lock();
-
-            let mut word_count = FxHashMap::default();
-
-            let mut trees: Vec<_> = handle
-                .lines()
-                .filter_map(|l| {
-                    if l.is_err() {
-                        eprintln!("Error when reading line: {:?}", l);
-                    }
-                    l.ok()
-                })
-                .map(|l| SExp::from_str(&l))
-                .filter_map(|s| {
-                    if s.is_err() {
-                        eprintln!("Error when parsing SExp: {:?}", s);
-                    }
-                    s.ok()
-                })
-                .map(Tree::from)
-                .collect();
-
-            for tree in &trees {
-                unk::count_words(tree, &mut word_count);
-            }
-
-            // We keep all words that we don't want to unkify.
-            word_count.retain(|_, v| *v >= *threshold);
-            let word_count = word_count;
-
-            trees.iter_mut().for_each(|t| {
-                t.unkify(&word_count);
-                println!("{}", t);
-            });
+            unking(UnkingMode::Trivial, *threshold);
         }
         Commands::Smooth { threshold } => {
-            let stdin = io::stdin();
-            let handle = stdin.lock();
-
-            let mut word_count = FxHashMap::default();
-
-            let mut trees: Vec<_> = handle
-                .lines()
-                .filter_map(|l| {
-                    if l.is_err() {
-                        eprintln!("Error when reading line: {:?}", l);
-                    }
-                    l.ok()
-                })
-                .map(|l| SExp::from_str(&l))
-                .filter_map(|s| {
-                    if s.is_err() {
-                        eprintln!("Error when parsing SExp: {:?}", s);
-                    }
-                    s.ok()
-                })
-                .map(Tree::from)
-                .collect();
-
-            for tree in &trees {
-                unk::count_words(tree, &mut word_count);
-            }
-
-            // We keep all words that we don't want to unkify.
-            word_count.retain(|_, v| *v >= *threshold);
-            let word_count = word_count;
-
-            trees.iter_mut().for_each(|t| {
-                t.smooth(&word_count);
-                println!("{}", t);
-            });
+            unking(UnkingMode::Smoothing, *threshold);
         }
         _ => std::process::exit(22),
     }
 
     Ok(())
+}
+
+enum UnkingMode {
+    Trivial,
+    Smoothing,
+}
+
+fn unking(mode: UnkingMode, threshold: usize) {
+    let stdin = io::stdin();
+    let handle = stdin.lock();
+
+    let mut word_count = FxHashMap::default();
+
+    let mut trees: Vec<_> = handle
+        .lines()
+        .filter_map(|l| {
+            if l.is_err() {
+                eprintln!("Error when reading line: {:?}", l);
+            }
+            l.ok()
+        })
+        .map(|l| SExp::from_str(&l))
+        .filter_map(|s| {
+            if s.is_err() {
+                eprintln!("Error when parsing SExp: {:?}", s);
+            }
+            s.ok()
+        })
+        .map(Tree::from)
+        .collect();
+
+    for tree in &trees {
+        unk::count_words(tree, &mut word_count);
+    }
+
+    // We keep all words that we don't want to unkify.
+    word_count.retain(|_, v| *v >= threshold);
+    let word_count = word_count;
+
+    trees.iter_mut().for_each(|t| {
+        match mode {
+            UnkingMode::Trivial => t.unkify(&word_count),
+            UnkingMode::Smoothing => t.smooth(&word_count),
+        };
+        println!("{}", t);
+    });
 }
