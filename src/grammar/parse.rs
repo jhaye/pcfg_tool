@@ -5,10 +5,14 @@ use float_ord::FloatOrd;
 use fxhash::{FxBuildHasher, FxHashMap};
 use multimap::MultiMap;
 
+use super::chart::Chart;
 use super::rule::{Rule, WeightedRule};
 use crate::tree::NodeType;
 use crate::Sentence;
 use crate::Tree;
+
+type ChartEntry = (FloatOrd<f64>, Option<BacktraceInfo>);
+type IntNt = u32;
 
 /// Reresents backtrace information used during the execution of the
 /// cyk algorithm to construct the constituent tree.
@@ -32,18 +36,18 @@ where
     T: Eq + Hash,
     W: Copy + Default,
 {
-    initial_nonterminal: u32,
+    initial_nonterminal: IntNt,
     // Lexical rules which we search by terminal on the RHS.
-    pub rules_lexical: MultiMap<T, (u32, W), FxBuildHasher>,
+    pub rules_lexical: MultiMap<T, (IntNt, W), FxBuildHasher>,
     // Non-lexical rules with one non-terminals on the RHS.
     // We search by the non-terminal on the RHS.
-    rules_chain: MultiMap<u32, (u32, W), FxBuildHasher>,
+    rules_chain: MultiMap<IntNt, (IntNt, W), FxBuildHasher>,
     // Non-lexical rules with two non-terminals on the RHS.
     // We search by non-terminal on the LHS.
-    rules_double: MultiMap<u32, (u32, u32, W), FxBuildHasher>,
+    rules_double: MultiMap<IntNt, (IntNt, IntNt, W), FxBuildHasher>,
     // Lookup table for intified non-terminals.
     lookup: Vec<N>,
-    lookup_index: FxHashMap<N, u32>,
+    lookup_index: FxHashMap<N, IntNt>,
 }
 
 impl<N, T> GrammarParse<N, T, FloatOrd<f64>>
@@ -65,9 +69,9 @@ where
         result
     }
 
-    fn intify(&mut self, n: N) -> u32 {
+    fn intify(&mut self, n: N) -> IntNt {
         self.lookup_index.get(&n).copied().unwrap_or_else(|| {
-            let index = self.lookup.len() as u32;
+            let index = self.lookup.len() as IntNt;
             self.lookup.push(n.clone());
             self.lookup_index.insert(n, index);
             index
@@ -102,29 +106,29 @@ where
         let num_nt = self.lookup.len();
         let s_len = sentence.len();
 
-        let mut c = vec![Default::default(); (s_len * (s_len + 1) / 2) * num_nt];
+        let mut chart: Chart<ChartEntry> = Chart::new(s_len, num_nt);
 
         for (i, word) in sentence.iter().enumerate() {
             if let Some(lexicals) = self.rules_lexical.get_vec(word) {
                 for (nt, weight) in lexicals {
                     let nt = *nt as usize;
-                    c[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
+                    chart[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
                 }
             }
-            self.unary_closure(&mut c[(i * num_nt)..((i + 1) * num_nt)]);
+            self.unary_closure(chart.get_cell_mut(i * num_nt));
         }
 
         for r in 2..=s_len {
             for i in 0..=(s_len - r) {
                 let j = i + r;
-                let i_j = cyk_cell_index(i, r, s_len, num_nt);
+                let i_j = chart.cell_start_index(i, r);
                 for a in 0..num_nt {
                     for m in (i + 1)..j {
-                        let i_m = cyk_cell_index(i, m - i, s_len, num_nt);
-                        let m_j = cyk_cell_index(m, j - m, s_len, num_nt);
+                        let i_m = chart.cell_start_index(i, m - i);
+                        let m_j = chart.cell_start_index(m, j - m);
 
-                        if let Some(binary_rules) = self.rules_double.get_vec(&(a as u32)) {
-                            c[i_j + a] = c[i_j + a].max(
+                        if let Some(binary_rules) = self.rules_double.get_vec(&(a as IntNt)) {
+                            chart[i_j + a] = chart[i_j + a].max(
                                 binary_rules
                                     .iter()
                                     .map(|(x, y, weight)| {
@@ -132,9 +136,11 @@ where
                                         let y = *y as usize;
                                         (
                                             FloatOrd(
-                                                weight.0 * c[i_m + (x)].0 .0 * c[m_j + (y)].0 .0,
+                                                weight.0
+                                                    * chart[i_m + x].0 .0
+                                                    * chart[m_j + y].0 .0,
                                             ),
-                                            Some(BacktraceInfo::Binary(i_m + (x), m_j + (y))),
+                                            Some(BacktraceInfo::Binary(i_m + x, m_j + y)),
                                         )
                                     })
                                     .max()
@@ -143,19 +149,15 @@ where
                         }
                     }
                 }
-                self.unary_closure(&mut c[i_j..(i_j + num_nt)]);
+                self.unary_closure(chart.get_cell_mut(i_j));
             }
         }
 
-        Self::construct_best_tree(
-            &c,
-            cyk_cell_index(0, s_len, s_len, num_nt) + (self.initial_nonterminal as usize),
-            sentence,
-            &self.lookup,
-        )
+        let root_cell = chart.cell_start_index(0, s_len) + (self.initial_nonterminal as usize);
+        Self::construct_best_tree(chart.data(), root_cell, sentence, &self.lookup)
     }
 
-    fn unary_closure(&self, c: &mut [(FloatOrd<f64>, Option<BacktraceInfo>)]) {
+    fn unary_closure(&self, c: &mut [ChartEntry]) {
         // Use max heap so we can easily extract the element with
         // the greatest weight.
         let mut queue = BinaryHeap::with_capacity(c.len());
@@ -179,7 +181,7 @@ where
         while let Some(((q, backtrace), b)) = queue.pop() {
             if q > c[b].0 {
                 c[b] = (q, backtrace);
-                if let Some(chain_rules) = self.rules_chain.get_vec(&(b as u32)) {
+                if let Some(chain_rules) = self.rules_chain.get_vec(&(b as IntNt)) {
                     for (a, chain_weight) in chain_rules {
                         queue.push((
                             (
@@ -195,7 +197,7 @@ where
     }
 
     fn construct_best_tree(
-        c: &[(FloatOrd<f64>, Option<BacktraceInfo>)],
+        c: &[ChartEntry],
         c_idx: usize,
         sentence: &Sentence<T>,
         lookup: &[N],
@@ -234,21 +236,6 @@ where
             }
         }
     }
-}
-
-/// Calculates the index for the corresponding cell in c during the execution of the cyk algorithm.
-/// Individual cells are further subdivided for each non-terminal. This offset has to be added
-/// afterwards.
-const fn cyk_cell_index(
-    start_pos: usize,
-    span: usize,
-    sentence_len: usize,
-    num_nt: usize,
-) -> usize {
-    let rows_subtract = sentence_len - span + 1;
-    let base_cells_subtract = (rows_subtract * (rows_subtract + 1)) / 2;
-    let num_base_cells = (sentence_len * (sentence_len + 1)) / 2;
-    (num_base_cells - base_cells_subtract + start_pos) * num_nt
 }
 
 #[cfg(test)]
