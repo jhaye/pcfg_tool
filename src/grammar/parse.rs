@@ -124,21 +124,13 @@ where
         };
     }
 
-    pub fn cyk(&self, sentence: &Sentence<T>) -> Option<Tree<NodeType<N, T>>> {
+    pub fn cyk(&self, sentence: &Sentence<T>, mode: CykMode) -> Option<Tree<NodeType<N, T>>> {
         let num_nt = self.lookup.len();
         let s_len = sentence.len();
+        const ZERO: FloatOrd<f64> = FloatOrd(0.0);
 
         let mut chart: Chart<ChartEntry> = Chart::new(s_len, num_nt);
-
-        for (i, word) in sentence.iter().enumerate() {
-            if let Some(lexicals) = self.rules_lexical.get_vec(word) {
-                for (nt, weight) in lexicals {
-                    let nt = *nt as usize;
-                    chart[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
-                }
-            }
-            self.unary_closure(chart.get_cell_mut(i * num_nt));
-        }
+        self.chart_setup(sentence, &mut chart, &mode);
 
         for r in 2..=s_len {
             for i in 0..=(s_len - r) {
@@ -150,19 +142,27 @@ where
                         let m_j = chart.cell_start_index(m, j - m);
 
                         if let Some(binary_rules) = self.rules_double.get_vec(&(a as IntNt)) {
+                            let binary_rules_iter = binary_rules
+                                .iter()
+                                .map(|(b, c, w)| (*b as usize, *c as usize, w))
+                                .filter(|(b, c, _)| {
+                                    if mode.is_prune() {
+                                        chart[i_m + *b].0 > ZERO && chart[m_j + *c].0 > ZERO
+                                    } else {
+                                        true
+                                    }
+                                });
+
                             chart[i_j + a] = chart[i_j + a].max(
-                                binary_rules
-                                    .iter()
-                                    .map(|(x, y, weight)| {
-                                        let x = *x as usize;
-                                        let y = *y as usize;
+                                binary_rules_iter
+                                    .map(|(b, c, weight)| {
                                         (
                                             FloatOrd(
                                                 weight.0
-                                                    * chart[i_m + x].0 .0
-                                                    * chart[m_j + y].0 .0,
+                                                    * chart[i_m + b].0 .0
+                                                    * chart[m_j + c].0 .0,
                                             ),
-                                            Some(BacktraceInfo::Binary(i_m + x, m_j + y)),
+                                            Some(BacktraceInfo::Binary(i_m + b, m_j + c)),
                                         )
                                     })
                                     .max()
@@ -171,12 +171,66 @@ where
                         }
                     }
                 }
-                self.unary_closure(chart.get_cell_mut(i_j));
+                match mode {
+                    CykMode::Base => self.unary_closure(chart.get_cell_mut(i_j)),
+                    CykMode::PruneThreshold(t) => self.prune_threshold(chart.get_cell_mut(i_j), t),
+                    CykMode::PruneFixedSize(n) => self.prune_fixed_size(chart.get_cell_mut(i_j), n),
+                }
             }
         }
 
         let root_cell = chart.cell_start_index(0, s_len) + (self.initial_nonterminal as usize);
         Self::construct_best_tree(chart.data(), root_cell, sentence, &self.lookup)
+    }
+
+    fn chart_setup(&self, sentence: &Sentence<T>, chart: &mut Chart<ChartEntry>, mode: &CykMode) {
+        let num_nt = chart.num_nt();
+
+        match mode {
+            CykMode::Base => {
+                for (i, word) in sentence.iter().enumerate() {
+                    if let Some(lexicals) = self.rules_lexical.get_vec(word) {
+                        for (nt, weight) in lexicals {
+                            let nt = *nt as usize;
+                            chart[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
+                        }
+                    }
+                    self.unary_closure(chart.get_cell_mut(i * num_nt));
+                }
+            }
+            CykMode::PruneThreshold(t) => {
+                self.chart_setup_prune(sentence, chart, PruneMode::PruneThreshold(*t));
+            }
+            CykMode::PruneFixedSize(n) => {
+                self.chart_setup_prune(sentence, chart, PruneMode::PruneFixedSize(*n));
+            }
+        }
+    }
+
+    fn chart_setup_prune(
+        &self,
+        sentence: &Sentence<T>,
+        chart: &mut Chart<ChartEntry>,
+        mode: PruneMode,
+    ) {
+        let num_nt = chart.num_nt();
+
+        for (i, word) in sentence.iter().enumerate() {
+            if let Some(lexicals) = self.rules_lexical.get_vec(word) {
+                for (nt, weight) in lexicals {
+                    let idx = (i * num_nt) + (*nt as usize);
+                    chart[idx] = chart[idx].max((*weight, Some(BacktraceInfo::Term(i))));
+                }
+            }
+            match mode {
+                PruneMode::PruneThreshold(t) => {
+                    self.prune_threshold(chart.get_cell_mut(i * num_nt), t)
+                }
+                PruneMode::PruneFixedSize(n) => {
+                    self.prune_fixed_size(chart.get_cell_mut(i * num_nt), n)
+                }
+            }
+        }
     }
 
     fn unary_closure(&self, c: &mut [ChartEntry]) {
@@ -214,6 +268,44 @@ where
                         ));
                     }
                 }
+            }
+        }
+    }
+
+    /// Zeroes all entries that are smaller than best probability in the given cell
+    /// multiplied by `threshold`;
+    fn prune_threshold(&self, c: &mut [ChartEntry], threshold: f64) {
+        let m = c.iter().max().unwrap().0;
+        let cutoff = FloatOrd(m.0 * threshold);
+
+        for chart_ele in c {
+            if chart_ele.0 < cutoff {
+                *chart_ele = Default::default();
+            }
+        }
+    }
+
+    /// Zeroes all entries that are smaller than the n-best entry in the cell.
+    /// If `n` is less than the cell size, we use the last entry.
+    fn prune_fixed_size(&self, c: &mut [ChartEntry], n: usize) {
+        let num_nt = c.len();
+
+        let n_best = {
+            let mut sorted = vec![Default::default(); c.len()];
+            sorted.copy_from_slice(c);
+            sorted.sort_unstable();
+            sorted.reverse();
+
+            if num_nt > n {
+                *sorted.last().unwrap()
+            } else {
+                sorted[n - 1]
+            }
+        };
+
+        for chart_ele in c {
+            if *chart_ele < n_best {
+                *chart_ele = Default::default();
             }
         }
     }

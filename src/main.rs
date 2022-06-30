@@ -16,7 +16,7 @@ use fxhash::FxHashMap;
 use rayon::prelude::*;
 
 use grammar::bare::GrammarBare;
-use grammar::parse::GrammarParse;
+use grammar::parse::{CykMode, GrammarParse};
 use grammar::rule::{Rule, WeightedRule};
 use sentence::Sentence;
 use sexp::SExp;
@@ -268,7 +268,12 @@ fn main() -> io::Result<()> {
                             (s, wmap)
                         })
                         .map(|(s, wmap)| {
-                            (grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()), wmap)
+                            (
+                                grammar
+                                    .cyk(&s, CykMode::Base)
+                                    .unwrap_or_else(|| s.into_noparse()),
+                                wmap,
+                            )
                         })
                         .map(|(mut t, wmap)| {
                             if let Some(wmap) = wmap {
@@ -287,7 +292,11 @@ fn main() -> io::Result<()> {
                             }
                             s.ok()
                         })
-                        .map(|s| grammar.cyk(&s).unwrap_or_else(|| s.into_noparse()))
+                        .map(|s| {
+                            grammar
+                                .cyk(&s, CykMode::Base)
+                                .unwrap_or_else(|| s.into_noparse())
+                        })
                         .collect()
                 };
 
