@@ -28,6 +28,7 @@ enum BacktraceInfo {
 
 /// Differentiates modes for the CYK algorithm. Pruning is further differentiated into
 /// threshold beam and fixed-size beam.
+#[derive(Copy, Clone)]
 pub enum CykMode {
     Base,
     PruneThreshold(f64),

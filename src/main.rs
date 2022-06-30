@@ -50,9 +50,9 @@ enum Commands {
         #[clap(short, long)]
         smoothing: bool,
         #[clap(short, long)]
-        threshold_beam: Option<u32>,
+        threshold_beam: Option<f64>,
         #[clap(short, long)]
-        rank_beam: Option<u32>,
+        rank_beam: Option<usize>,
         #[clap(short, long)]
         kbest: Option<u32>,
         #[clap(short, long)]
@@ -149,18 +149,25 @@ fn main() -> io::Result<()> {
             astar,
         } => {
             // Filter out all unsupported options
-            if threshold_beam.is_some()
-                || rank_beam.is_some()
-                || kbest.is_some()
-                || astar.is_some()
-                || *paradigma == ParsingParadigma::Deductive
-            {
+            if kbest.is_some() || astar.is_some() || *paradigma == ParsingParadigma::Deductive {
                 std::process::exit(22)
             }
 
             if *unking && *smoothing {
                 panic!("Unking and smoothing are mutually exclusive. Only use one!")
             }
+
+            if threshold_beam.is_some() && rank_beam.is_some() {
+                panic!("Pruning with both threshold beam and fixed-size beam is mutually exclusive. Only use one!")
+            }
+
+            let mode = if let Some(t) = threshold_beam {
+                CykMode::PruneThreshold(*t)
+            } else if let Some(n) = rank_beam {
+                CykMode::PruneFixedSize(*n)
+            } else {
+                CykMode::Base
+            };
 
             let mut grammar = GrammarParse::new(initial_nonterminal.as_str().into());
 
@@ -269,9 +276,7 @@ fn main() -> io::Result<()> {
                         })
                         .map(|(s, wmap)| {
                             (
-                                grammar
-                                    .cyk(&s, CykMode::Base)
-                                    .unwrap_or_else(|| s.into_noparse()),
+                                grammar.cyk(&s, mode).unwrap_or_else(|| s.into_noparse()),
                                 wmap,
                             )
                         })
@@ -292,11 +297,7 @@ fn main() -> io::Result<()> {
                             }
                             s.ok()
                         })
-                        .map(|s| {
-                            grammar
-                                .cyk(&s, CykMode::Base)
-                                .unwrap_or_else(|| s.into_noparse())
-                        })
+                        .map(|s| grammar.cyk(&s, mode).unwrap_or_else(|| s.into_noparse()))
                         .collect()
                 };
 
