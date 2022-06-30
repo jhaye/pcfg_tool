@@ -27,6 +27,11 @@ where
         self.data.as_slice()
     }
 
+    /// Returns number of non-termnials for this chart.
+    pub fn num_nt(&self) -> usize {
+        self.num_nonterminals
+    }
+
     pub fn get_cell_mut(&mut self, start: ChartIdx) -> &mut [T] {
         &mut self.data[start..(start + self.num_nonterminals)]
     }
