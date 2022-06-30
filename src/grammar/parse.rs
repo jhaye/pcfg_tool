@@ -26,6 +26,28 @@ enum BacktraceInfo {
     Term(usize),
 }
 
+/// Differentiates modes for the CYK algorithm. Pruning is further differentiated into
+/// threshold beam and fixed-size beam.
+pub enum CykMode {
+    Base,
+    PruneThreshold(f64),
+    PruneFixedSize(usize),
+}
+
+pub enum PruneMode {
+    PruneThreshold(f64),
+    PruneFixedSize(usize),
+}
+
+impl CykMode {
+    fn is_prune(&self) -> bool {
+        match self {
+            CykMode::Base => false,
+            CykMode::PruneThreshold(_) | CykMode::PruneFixedSize(_) => true,
+        }
+    }
+}
+
 #[derive(Debug)]
 /// Grammar built specifically for deriving most
 /// probable constituent trees from sentences with
