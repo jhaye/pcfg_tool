@@ -35,46 +35,66 @@ enum Commands {
     /// Reads a sequence of constituent trees from STDIN and prints the induced PCFG to STDOUT.
     /// If the optional argument [GRAMMAR] is present, it is written into the files
     /// GRAMMAR.rules, GRAMMAR.lexicon and GRAMMAR.words.
-    Induce {
-        grammar: Option<String>,
-    },
+    Induce { grammar: Option<String> },
+    /// Reads a sequence of sentences from STDIN and returns the best derived parse trees to STDOUT.
+    /// RULES and LEXICON are the files that make up the used PCFG.
     Parse {
         rules: String,
         lexicon: String,
+        /// Choose the parsing paradigm.
         #[clap(short, long, default_value_t=ParsingParadigma::Cyk, arg_enum)]
         paradigma: ParsingParadigma,
+        /// Set custom initial non-terminal for the given PCFG.        /// Not implemented.
+
         #[clap(short, long, default_value_t = String::from("ROOT"))]
         initial_nonterminal: String,
+        /// Do trivial unking on supplied sentences before parsing.
         #[clap(short, long)]
         unking: bool,
+        /// Do smoothing on supplied sentences before parsing.
         #[clap(short, long)]
         smoothing: bool,
+        /// Prune parsing data with the given threshold. Rules are only kept if their probability
+        /// is not lower than the best derivation multiplied by the threshold.
         #[clap(short, long)]
         threshold_beam: Option<f64>,
+        /// Prune parsing data with the given rank n. Rules are only kept if their probability
+        /// is not lower than the n-best derivation.
         #[clap(short, long)]
         rank_beam: Option<usize>,
+        /// Not implemented.
         #[clap(short, long)]
         kbest: Option<u32>,
+        /// Not implemented.
         #[clap(short, long)]
         astar: Option<PathBuf>,
     },
+    /// Reads constituent trees from STDIN and returns their binarised counterparts to STDOUT.
     Binarise {
+        /// Set horizontal markovisation parameter.
         #[clap(short, long, default_value_t = 999)]
         horizontal: usize,
+        /// Set vertical markovisation parameter.
         #[clap(short, long, default_value_t = 1)]
         vertical: usize,
         #[clap(long)]
         help: bool,
     },
+    /// Reads binarised constituent trees from STDIN and returns them in their original state to STDOUT.
     Debinarise,
+    /// Reads sequence of constituent trees from STDIN and returns the derived trees via trivial unking.
     Unk {
+        /// If a word occurs less often than the threshold it gets unked.
         #[clap(short, long)]
         threshold: usize,
     },
+    /// Reads sequence of constituent trees from STDIN and returns the derived trees via smoothing.
     Smooth {
+        /// If a word occurs less often than the threshold it gets unked with the derived signature.
         #[clap(short, long)]
         threshold: usize,
     },
+    /// Not implemented.
     Outside {
         rules: String,
         lexicon: String,
