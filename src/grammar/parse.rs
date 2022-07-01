@@ -142,6 +142,8 @@ where
                                 .iter()
                                 .map(|(b, c, w)| (*b as usize, *c as usize, w))
                                 .filter(|(b, c, _)| {
+                                    // Manually filter out zero factors for pruning.
+                                    // This provides a significant speedup.
                                     if mode.is_prune() {
                                         chart[i_m + *b].0 > ZERO && chart[m_j + *c].0 > ZERO
                                     } else {
