@@ -35,11 +35,6 @@ pub enum CykMode {
     PruneFixedSize(usize),
 }
 
-pub enum PruneMode {
-    PruneThreshold(f64),
-    PruneFixedSize(usize),
-}
-
 impl CykMode {
     fn is_prune(&self) -> bool {
         match self {
@@ -172,8 +167,9 @@ where
                         }
                     }
                 }
+                self.unary_closure(chart.get_cell_mut(i_j));
                 match mode {
-                    CykMode::Base => self.unary_closure(chart.get_cell_mut(i_j)),
+                    CykMode::Base => {}
                     CykMode::PruneThreshold(t) => self.prune_threshold(chart.get_cell_mut(i_j), t),
                     CykMode::PruneFixedSize(n) => self.prune_fixed_size(chart.get_cell_mut(i_j), n),
                 }
@@ -187,48 +183,21 @@ where
     fn chart_setup(&self, sentence: &Sentence<T>, chart: &mut Chart<ChartEntry>, mode: &CykMode) {
         let num_nt = chart.num_nt();
 
-        match mode {
-            CykMode::Base => {
-                for (i, word) in sentence.iter().enumerate() {
-                    if let Some(lexicals) = self.rules_lexical.get_vec(word) {
-                        for (nt, weight) in lexicals {
-                            let nt = *nt as usize;
-                            chart[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
-                        }
-                    }
-                    self.unary_closure(chart.get_cell_mut(i * num_nt));
-                }
-            }
-            CykMode::PruneThreshold(t) => {
-                self.chart_setup_prune(sentence, chart, PruneMode::PruneThreshold(*t));
-            }
-            CykMode::PruneFixedSize(n) => {
-                self.chart_setup_prune(sentence, chart, PruneMode::PruneFixedSize(*n));
-            }
-        }
-    }
-
-    fn chart_setup_prune(
-        &self,
-        sentence: &Sentence<T>,
-        chart: &mut Chart<ChartEntry>,
-        mode: PruneMode,
-    ) {
-        let num_nt = chart.num_nt();
-
         for (i, word) in sentence.iter().enumerate() {
             if let Some(lexicals) = self.rules_lexical.get_vec(word) {
                 for (nt, weight) in lexicals {
-                    let idx = (i * num_nt) + (*nt as usize);
-                    chart[idx] = chart[idx].max((*weight, Some(BacktraceInfo::Term(i))));
+                    let nt = *nt as usize;
+                    chart[(i * num_nt) + nt] = (*weight, Some(BacktraceInfo::Term(i)));
                 }
             }
+            self.unary_closure(chart.get_cell_mut(i * num_nt));
             match mode {
-                PruneMode::PruneThreshold(t) => {
-                    self.prune_threshold(chart.get_cell_mut(i * num_nt), t)
+                CykMode::Base => {}
+                CykMode::PruneThreshold(t) => {
+                    self.prune_threshold(chart.get_cell_mut(i * num_nt), *t)
                 }
-                PruneMode::PruneFixedSize(n) => {
-                    self.prune_fixed_size(chart.get_cell_mut(i * num_nt), n)
+                CykMode::PruneFixedSize(n) => {
+                    self.prune_fixed_size(chart.get_cell_mut(i * num_nt), *n)
                 }
             }
         }
