@@ -297,7 +297,7 @@ where
             sorted.sort_unstable();
             sorted.reverse();
 
-            if num_nt > n {
+            if n > num_nt {
                 *sorted.last().unwrap()
             } else {
                 sorted[n - 1]
