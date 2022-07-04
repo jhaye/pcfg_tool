@@ -48,5 +48,17 @@ mod test {
             "(ROOT (RB Not) (NP-TMP (DT this) (NN year)) (. .))".to_string(),
             format!("{}", binarized_tree.debinarize())
         );
+
+        let binarized_tree2 = Tree::from(
+            SExp::from_str(
+                "(S (A (A1 a) (A|<A2,A3> (A2 a) (A3 a))) (S|<B,C,D> (B b) (S|<C,D> (C c) (D d))))",
+            )
+            .unwrap(),
+        );
+        let binarized_tree2 = binarized_tree2.parse_markovized();
+        assert_eq!(
+            "(S (A (A1 a) (A2 a) (A3 a)) (B b) (C c) (D d))".to_string(),
+            format!("{}", binarized_tree2.debinarize())
+        );
     }
 }
