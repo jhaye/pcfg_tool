@@ -28,11 +28,11 @@ impl Tree<SmallString<[u8; 8]>> {
         } else if self.children.len() <= 2 {
             let new_root = Binarized::from_str(&self.root).unwrap();
 
-            let parents_augmented = if v == 0 {
+            let parents_augmented = if v == 0 || v == 1 {
                 vec![]
             } else {
-                // Ensure that parents down the call tree don't exceed v.
-                let mut vec = if parents.len() == v {
+                // Ensure that parents down the call tree don't exceed (v - 1).
+                let mut vec = if parents.len() == v - 1 {
                     parents.iter().skip(1).cloned().collect()
                 } else {
                     Vec::from(parents)
@@ -109,29 +109,38 @@ mod test {
             SExp::from_str("(ROOT (FRAG (RB Not) (NP-TMP (DT this) (NN year)) (. .)))").unwrap(),
         );
 
-        let markovized_tree = tree.clone().markovize(3, 999, &[]);
+        let markovized_tree = tree.clone().markovize(4, 999, &[]);
         assert_eq!("(ROOT (FRAG^<ROOT> (RB Not) (FRAG|<NP-TMP,.>^<ROOT> (NP-TMP^<ROOT,FRAG> (DT this) (NN year)) (. .))))".to_string(), format!("{}", markovized_tree));
 
-        let markovized_tree2 = tree.clone().markovize(1, 999, &[]);
+        let markovized_tree2 = tree.clone().markovize(2, 999, &[]);
         assert_eq!("(ROOT (FRAG^<ROOT> (RB Not) (FRAG|<NP-TMP,.>^<ROOT> (NP-TMP^<FRAG> (DT this) (NN year)) (. .))))".to_string(), format!("{}", markovized_tree2));
 
-        let markovized_tree3 = tree.clone().markovize(0, 999, &[]);
+        let markovized_tree3 = tree.clone().markovize(1, 999, &[]);
         assert_eq!(
             "(ROOT (FRAG (RB Not) (FRAG|<NP-TMP,.> (NP-TMP (DT this) (NN year)) (. .))))"
                 .to_string(),
             format!("{}", markovized_tree3)
         );
 
-        let markovized_tree4 = tree.clone().markovize(0, 1, &[]);
+        let markovized_tree4 = tree.clone().markovize(1, 1, &[]);
         assert_eq!(
             "(ROOT (FRAG (RB Not) (FRAG|<NP-TMP> (NP-TMP (DT this) (NN year)) (. .))))".to_string(),
             format!("{}", markovized_tree4)
         );
 
-        let markovized_tree5 = tree.markovize(0, 0, &[]);
+        let markovized_tree5 = tree.markovize(1, 0, &[]);
         assert_eq!(
             "(ROOT (FRAG (RB Not) (FRAG (NP-TMP (DT this) (NN year)) (. .))))".to_string(),
             format!("{}", markovized_tree5)
+        );
+
+        let markovized_tree6 = Tree::from(
+            SExp::from_str("(S (A a) (B (BB (BBB (B1 b) (B2 b) (B3 b)))) (C c) (D d))").unwrap(),
+        )
+        .markovize(1, 999, &[]);
+        assert_eq!(
+            "(S (A a) (S|<B,C,D> (B (BB (BBB (B1 b) (BBB|<B2,B3> (B2 b) (B3 b))))) (S|<C,D> (C c) (D d))))".to_string(),
+            format!("{}", markovized_tree6)
         );
     }
 }
