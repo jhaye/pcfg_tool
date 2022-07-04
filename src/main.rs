@@ -436,7 +436,7 @@ fn unking(mode: UnkingMode, threshold: usize) {
     }
 
     // We keep all words that we don't want to unkify.
-    word_count.retain(|_, v| *v >= threshold);
+    word_count.retain(|_, v| *v > threshold);
     let word_count = word_count;
 
     trees.iter_mut().for_each(|t| {
