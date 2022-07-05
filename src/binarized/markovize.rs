@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::str::FromStr;
 
 use smallstr::SmallString;
@@ -28,18 +29,7 @@ impl Tree<SmallString<[u8; 8]>> {
         } else if self.children.len() <= 2 {
             let new_root = Binarized::from_str(&self.root).unwrap();
 
-            let parents_augmented = if v == 0 || v == 1 {
-                vec![]
-            } else {
-                // Ensure that parents down the call tree don't exceed (v - 1).
-                let mut vec = if parents.len() == v - 1 {
-                    parents.iter().skip(1).cloned().collect()
-                } else {
-                    Vec::from(parents)
-                };
-                vec.push(new_root.extract_label().clone());
-                vec
-            };
+            let parents_augmented = augment_parents(parents, new_root.extract_label().clone(), v);
 
             Tree {
                 root: match new_root {
@@ -76,6 +66,8 @@ impl Tree<SmallString<[u8; 8]>> {
                 ancestors: vec![],
             };
 
+            let parents_augmented = augment_parents(parents, augmented_label.label.clone(), v);
+
             Tree {
                 root: Binarized::Markovized(MarkovizedNode {
                     label: self.root.clone(),
@@ -83,7 +75,7 @@ impl Tree<SmallString<[u8; 8]>> {
                     ancestors: Vec::from(parents),
                 }),
                 children: vec![
-                    self.children[0].clone().markovize(v, h, parents),
+                    self.children[0].clone().markovize(v, h, &parents_augmented),
                     Tree {
                         // We have to convert the markovized node back into a string
                         // to make the recursion work.
@@ -94,6 +86,18 @@ impl Tree<SmallString<[u8; 8]>> {
                 ],
             }
         }
+    }
+}
+
+fn augment_parents<T: Clone>(parents: &[T], augmenter: T, v: usize) -> Vec<T> {
+    if v == 0 || v == 1 {
+        vec![]
+    } else {
+        let vec = Vec::from(parents);
+        let mut queue = VecDeque::from(vec);
+        queue.push_front(augmenter);
+        queue.truncate(v - 1);
+        queue.drain(..).collect()
     }
 }
 
