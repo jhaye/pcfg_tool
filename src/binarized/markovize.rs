@@ -110,7 +110,7 @@ mod test {
         );
 
         let markovized_tree = tree.clone().markovize(4, 999, &[]);
-        assert_eq!("(ROOT (FRAG^<ROOT> (RB Not) (FRAG|<NP-TMP,.>^<ROOT> (NP-TMP^<ROOT,FRAG> (DT this) (NN year)) (. .))))".to_string(), format!("{}", markovized_tree));
+        assert_eq!("(ROOT (FRAG^<ROOT> (RB Not) (FRAG|<NP-TMP,.>^<ROOT> (NP-TMP^<FRAG,ROOT> (DT this) (NN year)) (. .))))".to_string(), format!("{}", markovized_tree));
 
         let markovized_tree2 = tree.clone().markovize(2, 999, &[]);
         assert_eq!("(ROOT (FRAG^<ROOT> (RB Not) (FRAG|<NP-TMP,.>^<ROOT> (NP-TMP^<FRAG> (DT this) (NN year)) (. .))))".to_string(), format!("{}", markovized_tree2));
