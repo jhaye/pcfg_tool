@@ -29,6 +29,16 @@ pub enum Binarized<A> {
 }
 
 impl<A> Binarized<A> {
+    /// A node is markovized, when it has children defined
+    /// in its annotation. A node might feature ancestors,
+    /// but without children it's not markovized.
+    pub fn is_markovized(&self) -> bool {
+        match self {
+            Binarized::Markovized(node) => !node.children.is_empty(),
+            Binarized::Bare(_) => false,
+        }
+    }
+
     pub fn extract_label(&self) -> &A {
         match self {
             Binarized::Markovized(MarkovizedNode { label, .. }) => label,
