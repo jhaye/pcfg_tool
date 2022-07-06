@@ -35,6 +35,13 @@ impl PruneMode {
     fn is_prune(&self) -> bool {
         self.threshold.is_some() || self.fixed_size.is_some()
     }
+
+    fn empty() -> Self {
+        Self {
+            threshold: None,
+            fixed_size: None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -507,7 +514,7 @@ mod test {
             "a".to_string(),
             "fork".to_string(),
         ]);
-        assert_eq!(tree, grammar.cyk(&sentence, CykMode::Base).unwrap());
+        assert_eq!(tree, grammar.cyk(&sentence, &PruneMode::empty()).unwrap());
 
         let sentence = Sentence(vec![
             "a".to_string(),
@@ -518,6 +525,6 @@ mod test {
             "a".to_string(),
             "fork".to_string(),
         ]);
-        assert!(grammar.cyk(&sentence, CykMode::Base).is_none());
+        assert!(grammar.cyk(&sentence, &PruneMode::empty()).is_none());
     }
 }
