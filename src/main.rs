@@ -16,7 +16,7 @@ use fxhash::FxHashMap;
 use rayon::prelude::*;
 
 use grammar::bare::GrammarBare;
-use grammar::parse::{CykMode, GrammarParse};
+use grammar::parse::{GrammarParse, PruneMode};
 use grammar::rule::{Rule, WeightedRule};
 use sentence::Sentence;
 use sexp::SExp;
@@ -177,16 +177,9 @@ fn main() -> io::Result<()> {
                 panic!("Unking and smoothing are mutually exclusive. Only use one!")
             }
 
-            if threshold_beam.is_some() && rank_beam.is_some() {
-                panic!("Pruning with both threshold beam and fixed-size beam is mutually exclusive. Only use one!")
-            }
-
-            let mode = if let Some(t) = threshold_beam {
-                CykMode::PruneThreshold(*t)
-            } else if let Some(n) = rank_beam {
-                CykMode::PruneFixedSize(*n)
-            } else {
-                CykMode::Base
+            let mode = PruneMode {
+                threshold: *threshold_beam,
+                fixed_size: *rank_beam,
             };
 
             let mut grammar = GrammarParse::new(initial_nonterminal.as_str().into());
@@ -296,7 +289,7 @@ fn main() -> io::Result<()> {
                         })
                         .map(|(s, wmap)| {
                             (
-                                grammar.cyk(&s, mode).unwrap_or_else(|| s.into_noparse()),
+                                grammar.cyk(&s, &mode).unwrap_or_else(|| s.into_noparse()),
                                 wmap,
                             )
                         })
@@ -317,7 +310,7 @@ fn main() -> io::Result<()> {
                             }
                             s.ok()
                         })
-                        .map(|s| grammar.cyk(&s, mode).unwrap_or_else(|| s.into_noparse()))
+                        .map(|s| grammar.cyk(&s, &mode).unwrap_or_else(|| s.into_noparse()))
                         .collect()
                 };
 

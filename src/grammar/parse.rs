@@ -26,21 +26,14 @@ enum BacktraceInfo {
     Term(usize),
 }
 
-/// Differentiates modes for the CYK algorithm. Pruning is further differentiated into
-/// threshold beam and fixed-size beam.
-#[derive(Copy, Clone)]
-pub enum CykMode {
-    Base,
-    PruneThreshold(f64),
-    PruneFixedSize(usize),
+pub struct PruneMode {
+    pub threshold: Option<f64>,
+    pub fixed_size: Option<usize>,
 }
 
-impl CykMode {
+impl PruneMode {
     fn is_prune(&self) -> bool {
-        match self {
-            CykMode::Base => false,
-            CykMode::PruneThreshold(_) | CykMode::PruneFixedSize(_) => true,
-        }
+        self.threshold.is_some() || self.fixed_size.is_some()
     }
 }
 
@@ -120,13 +113,13 @@ where
         };
     }
 
-    pub fn cyk(&self, sentence: &Sentence<T>, mode: CykMode) -> Option<Tree<NodeType<N, T>>> {
+    pub fn cyk(&self, sentence: &Sentence<T>, mode: &PruneMode) -> Option<Tree<NodeType<N, T>>> {
         let num_nt = self.lookup.len();
         let s_len = sentence.len();
         const ZERO: FloatOrd<f64> = FloatOrd(0.0);
 
         let mut chart: Chart<ChartEntry> = Chart::new(s_len, num_nt);
-        self.chart_setup(sentence, &mut chart, &mode);
+        self.chart_setup(sentence, &mut chart, mode);
 
         for r in 2..=s_len {
             for i in 0..=(s_len - r) {
@@ -170,10 +163,11 @@ where
                     }
                 }
                 self.unary_closure(chart.get_cell_mut(i_j));
-                match mode {
-                    CykMode::Base => {}
-                    CykMode::PruneThreshold(t) => self.prune_threshold(chart.get_cell_mut(i_j), t),
-                    CykMode::PruneFixedSize(n) => self.prune_fixed_size(chart.get_cell_mut(i_j), n),
+                if let Some(threshold) = mode.threshold {
+                    self.prune_threshold(chart.get_cell_mut(i_j), threshold);
+                }
+                if let Some(fixed_size) = mode.fixed_size {
+                    self.prune_fixed_size(chart.get_cell_mut(i_j), fixed_size);
                 }
             }
         }
@@ -182,7 +176,7 @@ where
         Self::construct_best_tree(chart.data(), root_cell, sentence, &self.lookup)
     }
 
-    fn chart_setup(&self, sentence: &Sentence<T>, chart: &mut Chart<ChartEntry>, mode: &CykMode) {
+    fn chart_setup(&self, sentence: &Sentence<T>, chart: &mut Chart<ChartEntry>, mode: &PruneMode) {
         let num_nt = chart.num_nt();
 
         for (i, word) in sentence.iter().enumerate() {
@@ -193,14 +187,11 @@ where
                 }
             }
             self.unary_closure(chart.get_cell_mut(i * num_nt));
-            match mode {
-                CykMode::Base => {}
-                CykMode::PruneThreshold(t) => {
-                    self.prune_threshold(chart.get_cell_mut(i * num_nt), *t)
-                }
-                CykMode::PruneFixedSize(n) => {
-                    self.prune_fixed_size(chart.get_cell_mut(i * num_nt), *n)
-                }
+            if let Some(threshold) = mode.threshold {
+                self.prune_threshold(chart.get_cell_mut(i * num_nt), threshold);
+            }
+            if let Some(fixed_size) = mode.fixed_size {
+                self.prune_fixed_size(chart.get_cell_mut(i * num_nt), fixed_size);
             }
         }
     }
