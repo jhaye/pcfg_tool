@@ -15,6 +15,8 @@ fxhash = "0.2.1"
 rayon = "1.5.3"
 float-ord = { git = "https://github.com/notriddle/rust-float-ord", branch = "master" }
 
+creusot-contracts = { git = "https://github.com/xldenis/creusot", branch = "master" }
+
 [profile.release]
 lto = true
 codegen-units = 1
