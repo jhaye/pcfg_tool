@@ -39,7 +39,14 @@ impl<A> Binarized<A> {
         }
     }
 
-    pub fn extract_label(&self) -> &A {
+    pub fn label(&self) -> &A {
+        match self {
+            Binarized::Markovized(MarkovizedNode { label, .. }) => label,
+            Binarized::Bare(a) => a,
+        }
+    }
+
+    pub fn extract_label(self) -> A {
         match self {
             Binarized::Markovized(MarkovizedNode { label, .. }) => label,
             Binarized::Bare(a) => a,

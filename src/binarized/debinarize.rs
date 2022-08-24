@@ -4,13 +4,8 @@ use crate::tree::Tree;
 impl<A> Tree<Binarized<A>> {
     pub fn debinarize(mut self) -> Tree<A> {
         if self.is_leaf() {
-            let root = match self.root {
-                Binarized::Bare(a) => a,
-                Binarized::Markovized(_) => panic!("Leaf node cannot be markovized!"),
-            };
-
             Tree {
-                root,
+                root: self.root.extract_label(),
                 children: vec![],
             }
         } else if self.children.iter().last().unwrap().root.is_markovized()

@@ -29,7 +29,7 @@ impl Tree<SmallString<[u8; 8]>> {
         } else if self.children.len() <= 2 {
             let new_root = Binarized::from_str(&self.root).unwrap();
 
-            let parents_augmented = augment_parents(parents, new_root.extract_label().clone(), v);
+            let parents_augmented = augment_parents(parents, new_root.label().clone(), v);
 
             Tree {
                 root: match new_root {
