@@ -36,6 +36,7 @@ impl PruneMode {
         self.threshold.is_some() || self.fixed_size.is_some()
     }
 
+    #[cfg(test)]
     fn empty() -> Self {
         Self {
             threshold: None,
