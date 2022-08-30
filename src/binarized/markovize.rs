@@ -1,18 +1,16 @@
 use std::collections::VecDeque;
+use std::fmt::Display;
+use std::ops::Deref;
 use std::str::FromStr;
-
-use smallstr::SmallString;
 
 use super::node::{Binarized, MarkovizedNode};
 use crate::tree::Tree;
 
-impl Tree<SmallString<[u8; 8]>> {
-    pub fn markovize(
-        mut self,
-        v: usize,
-        h: usize,
-        parents: &[SmallString<[u8; 8]>],
-    ) -> Tree<Binarized<SmallString<[u8; 8]>>> {
+impl<A> Tree<A>
+where
+    A: Clone + Display + Deref<Target = str> + for<'a> From<&'a str>,
+{
+    pub fn markovize(mut self, v: usize, h: usize, parents: &[A]) -> Tree<Binarized<A>> {
         // is preterminal
         if self.children.iter().all(|c| c.is_leaf()) {
             Tree {
@@ -27,7 +25,7 @@ impl Tree<SmallString<[u8; 8]>> {
                     .collect(),
             }
         } else if self.children.len() <= 2 {
-            let new_root = Binarized::from_str(&self.root).unwrap();
+            let new_root: Binarized<A> = Binarized::from_str(&self.root).unwrap();
 
             let parents_augmented = augment_parents(parents, new_root.label().clone(), v);
 
@@ -51,10 +49,9 @@ impl Tree<SmallString<[u8; 8]>> {
             }
         } else {
             let augmented_label = MarkovizedNode {
-                label: Binarized::from_str(&self.root)
+                label: Binarized::<A>::from_str(&self.root)
                     .unwrap()
-                    .extract_label()
-                    .clone(),
+                    .extract_label(),
                 children: self
                     .children
                     .iter()
@@ -79,7 +76,7 @@ impl Tree<SmallString<[u8; 8]>> {
                     Tree {
                         // We have to convert the markovized node back into a string
                         // to make the recursion work.
-                        root: format!("{}", augmented_label).into(),
+                        root: A::from(&format!("{}", augmented_label)),
                         children: self.children[1..].to_vec(),
                     }
                     .markovize(v, h, parents),

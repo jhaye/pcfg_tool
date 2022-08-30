@@ -126,7 +126,7 @@ fn main() -> io::Result<()> {
                     }
                     l.ok()
                 })
-                .map(|l| SExp::from_str(&l))
+                .map(|l| SExp::<String>::from_str(&l))
                 .filter_map(|s| {
                     if s.is_err() {
                         eprintln!("Error when parsing SExp: {:?}", s);
@@ -197,7 +197,7 @@ fn main() -> io::Result<()> {
                     }
                     l.ok()
                 })
-                .map(|l| WeightedRule::from_str(&l))
+                .map(|l| WeightedRule::<String, String, _>::from_str(&l))
                 .filter_map(|r| {
                     if r.is_err() {
                         eprintln!("Error when parsing non-lexical rule: {:?}", r);
@@ -256,7 +256,8 @@ fn main() -> io::Result<()> {
             let mut done = false;
             while !done {
                 for _ in 0..LINES_READ {
-                    match handle.read_line(&mut input_buf) {
+                    let line = handle.read_line(&mut input_buf);
+                    match line {
                         Ok(0) => {
                             done = true;
                             break;
@@ -337,7 +338,7 @@ fn main() -> io::Result<()> {
                     }
                     l.ok()
                 })
-                .map(|l| SExp::from_str(&l))
+                .map(|l| SExp::<String>::from_str(&l))
                 .filter_map(|s| {
                     if s.is_err() {
                         eprintln!("Error when parsing SExp: {:?}", s);
@@ -360,7 +361,7 @@ fn main() -> io::Result<()> {
                     }
                     l.ok()
                 })
-                .map(|l| SExp::from_str(&l))
+                .map(|l| SExp::<String>::from_str(&l))
                 .filter_map(|s| {
                     if s.is_err() {
                         eprintln!("Error when parsing SExp: {:?}", s);
@@ -403,7 +404,7 @@ fn unking(mode: UnkingMode, threshold: usize) {
             }
             l.ok()
         })
-        .map(|l| SExp::from_str(&l))
+        .map(|l| SExp::<String>::from_str(&l))
         .filter_map(|s| {
             if s.is_err() {
                 eprintln!("Error when parsing SExp: {:?}", s);

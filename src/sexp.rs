@@ -8,7 +8,6 @@ use nom::error::Error as NError;
 use nom::multi::separated_list0;
 use nom::sequence::{delimited, preceded};
 use nom::{Finish, IResult};
-use smallstr::SmallString;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum SExp<A> {
@@ -16,7 +15,10 @@ pub enum SExp<A> {
     List(Vec<SExp<A>>),
 }
 
-impl FromStr for SExp<SmallString<[u8; 8]>> {
+impl<T> FromStr for SExp<T>
+where
+    T: for<'a> From<&'a str>,
+{
     type Err = NError<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -30,19 +32,28 @@ impl FromStr for SExp<SmallString<[u8; 8]>> {
     }
 }
 
-fn parse_sexp(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
+fn parse_sexp<'a, T>(input: &'a str) -> IResult<&str, SExp<T>>
+where
+    T: From<&'a str>,
+{
     alt((
         delimited(char('('), parse_sexp_list, preceded(multispace0, char(')'))),
         parse_atom,
     ))(input.trim())
 }
 
-fn parse_sexp_list(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
+fn parse_sexp_list<'a, T>(input: &'a str) -> IResult<&str, SExp<T>>
+where
+    T: From<&'a str>,
+{
     separated_list0(multispace1, parse_sexp)(input.trim()).map(|(i, o)| (i, SExp::List(o)))
 }
 
-fn parse_atom(input: &str) -> IResult<&str, SExp<SmallString<[u8; 8]>>> {
-    is_not("() \t")(input.trim()).map(|(i, o)| (i, SExp::Atom(SmallString::from(o))))
+fn parse_atom<'a, T>(input: &'a str) -> IResult<&str, SExp<T>>
+where
+    T: From<&'a str>,
+{
+    is_not("() \t")(input.trim()).map(|(i, o)| (i, SExp::Atom(T::from(o))))
 }
 
 #[cfg(test)]
@@ -52,46 +63,40 @@ mod test {
     #[test]
     fn atom_correct() {
         // Fails with brackets
-        assert!(parse_atom("( a )").is_err());
+        assert!(parse_atom::<String>("( a )").is_err());
 
         // Produces same results with whitespace
         let (_, atom) = parse_atom("a").unwrap();
-        assert_eq!(atom, SExp::Atom(SmallString::from("a")));
+        assert_eq!(atom, SExp::Atom("a".to_string()));
         let (_, atom) = parse_atom(" a ").unwrap();
-        assert_eq!(atom, SExp::Atom(SmallString::from("a")));
+        assert_eq!(atom, SExp::Atom("a".to_string()));
 
         // Works with special characters
         let (_, atom) = parse_atom("NP-SBJ|<,,ADJP,,>").unwrap();
-        assert_eq!(atom, SExp::Atom(SmallString::from("NP-SBJ|<,,ADJP,,>")));
+        assert_eq!(atom, SExp::Atom(String::from("NP-SBJ|<,,ADJP,,>")));
     }
 
     #[test]
     fn sexp_correct() {
         // Just an atom
-        assert_eq!(
-            SExp::from_str("a").unwrap(),
-            SExp::Atom(SmallString::from("a"))
-        );
+        assert_eq!(SExp::from_str("a").unwrap(), SExp::Atom("a".to_string()));
 
         // With whitespace
-        assert_eq!(
-            SExp::from_str(" a ").unwrap(),
-            SExp::Atom(SmallString::from("a"))
-        );
+        assert_eq!(SExp::from_str(" a ").unwrap(), SExp::Atom("a".to_string()));
         assert!(SExp::from_str(" ( a ) ").is_ok());
 
         // With brackets
         assert_eq!(
             SExp::from_str("(a)").unwrap(),
-            SExp::List(vec![SExp::Atom(SmallString::from("a"))])
+            SExp::List(vec![SExp::Atom("a".to_string())])
         );
 
         // List with multiple elements
         assert_eq!(
             SExp::from_str("(a b)").unwrap(),
             SExp::List(vec![
-                SExp::Atom(SmallString::from("a")),
-                SExp::Atom(SmallString::from("b"))
+                SExp::Atom("a".to_string()),
+                SExp::Atom("b".to_string())
             ])
         );
 
@@ -102,10 +107,10 @@ mod test {
         assert_eq!(
             SExp::from_str("(a (b c))").unwrap(),
             SExp::List(vec![
-                SExp::Atom(SmallString::from("a")),
+                SExp::Atom("a".to_string()),
                 SExp::List(vec![
-                    SExp::Atom(SmallString::from("b")),
-                    SExp::Atom(SmallString::from("c")),
+                    SExp::Atom("b".to_string()),
+                    SExp::Atom("c".to_string()),
                 ])
             ])
         );

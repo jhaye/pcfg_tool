@@ -8,7 +8,6 @@ use nom::combinator::all_consuming;
 use nom::error::Error as NError;
 use nom::multi::separated_list1;
 use nom::{Finish, IResult};
-use smallstr::SmallString;
 
 use crate::tree::{NodeType, Tree};
 
@@ -49,7 +48,10 @@ impl<A: From<&'static str>> Sentence<A> {
     }
 }
 
-impl FromStr for Sentence<SmallString<[u8; 8]>> {
+impl<A> FromStr for Sentence<A>
+where
+    A: for<'a> From<&'a str>,
+{
     type Err = NError<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -63,9 +65,12 @@ impl FromStr for Sentence<SmallString<[u8; 8]>> {
     }
 }
 
-fn parse_sentence(input: &str) -> IResult<&str, Sentence<SmallString<[u8; 8]>>> {
+fn parse_sentence<'a, A>(input: &'a str) -> IResult<&str, Sentence<A>>
+where
+    A: From<&'a str>,
+{
     separated_list1(multispace1, is_not(" \t"))(input.trim())
-        .map(|(i, mut o)| (i, Sentence(o.drain(..).map(SmallString::from).collect())))
+        .map(|(i, mut o)| (i, Sentence(o.drain(..).map(A::from).collect())))
 }
 
 #[cfg(test)]

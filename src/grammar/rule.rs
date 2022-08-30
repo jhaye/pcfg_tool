@@ -11,7 +11,6 @@ use nom::multi::many_till;
 use nom::number::complete::double;
 use nom::sequence::{separated_pair, terminated, tuple};
 use nom::{Finish, IResult};
-use smallstr::SmallString;
 
 #[derive(Eq, PartialEq, Hash, Clone, Debug)]
 pub enum Rule<N, T>
@@ -29,10 +28,13 @@ pub struct WeightedRule<N: Eq + Hash, T: Eq + Hash, W> {
     pub weight: W,
 }
 
-type ParsedWeightedRule = WeightedRule<SmallString<[u8; 8]>, SmallString<[u8; 8]>, FloatOrd<f64>>;
-type NonLexicalRhs = (Vec<SmallString<[u8; 8]>>, FloatOrd<f64>);
+type ParsedWeightedRule<T> = WeightedRule<T, T, FloatOrd<f64>>;
+type NonLexicalRhs<T> = (Vec<T>, FloatOrd<f64>);
 
-impl FromStr for ParsedWeightedRule {
+impl<A> FromStr for ParsedWeightedRule<A>
+where
+    A: Eq + Hash + for<'a> From<&'a str>,
+{
     type Err = NError<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -46,11 +48,17 @@ impl FromStr for ParsedWeightedRule {
     }
 }
 
-fn parse_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
+fn parse_rule<'a, A>(input: &'a str) -> IResult<&str, ParsedWeightedRule<A>>
+where
+    A: Eq + Hash + From<&'a str>,
+{
     alt((parse_lexical_rule, parse_nonlexical_rule))(input.trim())
 }
 
-fn parse_lexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
+fn parse_lexical_rule<'a, A>(input: &'a str) -> IResult<&str, ParsedWeightedRule<A>>
+where
+    A: Eq + Hash + From<&'a str>,
+{
     tuple((
         terminated(is_not(" \t"), multispace1),
         terminated(is_not(" \t"), multispace1),
@@ -61,8 +69,8 @@ fn parse_lexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
             i,
             WeightedRule {
                 rule: Rule::Lexical {
-                    lhs: SmallString::from(n),
-                    rhs: SmallString::from(t),
+                    lhs: A::from(n),
+                    rhs: A::from(t),
                 },
                 weight: FloatOrd(weight),
             },
@@ -70,7 +78,10 @@ fn parse_lexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
     })
 }
 
-fn parse_nonlexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
+fn parse_nonlexical_rule<'a, A>(input: &'a str) -> IResult<&str, ParsedWeightedRule<A>>
+where
+    A: Eq + Hash + From<&'a str>,
+{
     separated_pair(
         terminated(is_not(" \t"), multispace1),
         tag("->"),
@@ -81,7 +92,7 @@ fn parse_nonlexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
             i,
             WeightedRule {
                 rule: Rule::NonLexical {
-                    lhs: SmallString::from(n),
+                    lhs: A::from(n),
                     rhs,
                 },
                 weight,
@@ -90,15 +101,12 @@ fn parse_nonlexical_rule(input: &str) -> IResult<&str, ParsedWeightedRule> {
     })
 }
 
-fn parse_rhs_nonlexical_rule(input: &str) -> IResult<&str, NonLexicalRhs> {
-    many_till(terminated(is_not(" \t"), multispace1), double)(input.trim()).map(
-        |(i, (mut rhs, w))| {
-            (
-                i,
-                (rhs.drain(..).map(SmallString::from).collect(), FloatOrd(w)),
-            )
-        },
-    )
+fn parse_rhs_nonlexical_rule<'a, A>(input: &'a str) -> IResult<&str, NonLexicalRhs<A>>
+where
+    A: From<&'a str>,
+{
+    many_till(terminated(is_not(" \t"), multispace1), double)(input.trim())
+        .map(|(i, (mut rhs, w))| (i, (rhs.drain(..).map(A::from).collect(), FloatOrd(w))))
 }
 
 #[cfg(test)]

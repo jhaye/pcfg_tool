@@ -1,5 +1,5 @@
-use std::borrow::Borrow;
 use std::fmt;
+use std::ops::Deref;
 use std::str::FromStr;
 
 use nom::branch::alt;
@@ -11,18 +11,17 @@ use nom::multi::separated_list0;
 use nom::sequence::delimited;
 use nom::sequence::{preceded, tuple};
 use nom::{Finish, IResult};
-use smallstr::SmallString;
 
 use crate::tree::Tree;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct MarkovizedNode<A> {
     pub label: A,
     pub children: Vec<A>,
     pub ancestors: Vec<A>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Binarized<A> {
     Markovized(MarkovizedNode<A>),
     Bare(A),
@@ -54,7 +53,10 @@ impl<A> Binarized<A> {
     }
 }
 
-impl FromStr for Binarized<SmallString<[u8; 8]>> {
+impl<A> FromStr for Binarized<A>
+where
+    A: for<'a> From<&'a str>,
+{
     type Err = NError<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -68,15 +70,24 @@ impl FromStr for Binarized<SmallString<[u8; 8]>> {
     }
 }
 
-fn parse_binarized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8; 8]>>> {
+fn parse_binarized_node<'a, A>(input: &'a str) -> IResult<&str, Binarized<A>>
+where
+    A: From<&'a str>,
+{
     alt((parse_bare_node, parse_markovized_node))(input)
 }
 
-fn parse_bare_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8; 8]>>> {
-    all_consuming(is_not("|^"))(input).map(|(i, o)| (i, Binarized::Bare(SmallString::from(o))))
+fn parse_bare_node<'a, A>(input: &'a str) -> IResult<&str, Binarized<A>>
+where
+    A: From<&'a str>,
+{
+    all_consuming(is_not("|^"))(input).map(|(i, o)| (i, Binarized::Bare(A::from(o))))
 }
 
-fn parse_markovized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8; 8]>>> {
+fn parse_markovized_node<'a, A>(input: &'a str) -> IResult<&str, Binarized<A>>
+where
+    A: From<&'a str>,
+{
     tuple((
         is_not("|^"),
         opt(preceded(
@@ -100,12 +111,12 @@ fn parse_markovized_node(input: &str) -> IResult<&str, Binarized<SmallString<[u8
         (
             i,
             Binarized::Markovized(MarkovizedNode {
-                label: SmallString::from(label),
+                label: A::from(label),
                 children: children
-                    .map(|mut v| v.drain(..).map(SmallString::from).collect())
+                    .map(|mut v| v.drain(..).map(A::from).collect())
                     .unwrap_or_default(),
                 ancestors: ancestors
-                    .map(|mut v| v.drain(..).map(SmallString::from).collect())
+                    .map(|mut v| v.drain(..).map(A::from).collect())
                     .unwrap_or_default(),
             }),
         )
@@ -155,16 +166,19 @@ impl<A: fmt::Display> fmt::Display for Binarized<A> {
     }
 }
 
-impl<A: Borrow<str>> Tree<A> {
-    pub fn parse_markovized(mut self) -> Tree<Binarized<SmallString<[u8; 8]>>> {
+impl<A> Tree<A>
+where
+    A: for<'a> From<&'a str> + Deref<Target = str>,
+{
+    pub fn parse_markovized(mut self) -> Tree<Binarized<A>> {
         if self.is_leaf() {
             Tree {
-                root: Binarized::from_str(self.root.borrow()).unwrap(),
+                root: Binarized::from_str(&self.root).unwrap(),
                 children: vec![],
             }
         } else {
             Tree {
-                root: Binarized::from_str(self.root.borrow()).unwrap(),
+                root: Binarized::from_str(&self.root).unwrap(),
                 children: self
                     .children
                     .drain(..)
