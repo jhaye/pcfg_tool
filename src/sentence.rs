@@ -5,13 +5,14 @@ use nom::bytes::complete::is_not;
 use nom::character::complete::multispace1;
 use nom::combinator::all_consuming;
 
+use creusot_contracts::trusted;
 use nom::error::Error as NError;
 use nom::multi::separated_list1;
 use nom::{Finish, IResult};
 
-use crate::tree::{NodeType, Tree};
+// use crate::tree::{NodeType, Tree};
 
-#[derive(PartialEq, Eq, Debug)]
+//#[derive(PartialEq, Eq, Debug)]
 pub struct Sentence<A>(pub Vec<A>);
 
 impl<A> Sentence<A> {
@@ -32,7 +33,7 @@ impl<A> Sentence<A> {
     }
 }
 
-impl<A: From<&'static str>> Sentence<A> {
+/*impl<A: From<&'static str>> Sentence<A> {
     pub fn into_noparse(mut self) -> Tree<NodeType<A, A>> {
         Tree {
             root: NodeType::NonTerminal("NOPARSE".into()),
@@ -46,7 +47,7 @@ impl<A: From<&'static str>> Sentence<A> {
                 .collect(),
         }
     }
-}
+}*/
 
 impl<A> FromStr for Sentence<A>
 where
@@ -54,6 +55,7 @@ where
 {
     type Err = NError<String>;
 
+    #[trusted]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match all_consuming(parse_sentence)(s).finish() {
             Ok((_, sentence)) => Ok(sentence),

@@ -1,36 +1,40 @@
-pub mod binarized;
-pub mod grammar;
+// pub mod binarized;
+// pub mod grammar;
 pub mod sentence;
-pub mod sexp;
-pub mod signature;
-pub mod tree;
-pub mod unk;
-
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+// pub mod sexp;
+// pub mod signature;
+// pub mod tree;
+// pub mod unk;
+//
+// use std::fs::File;
+// use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
-use std::str::FromStr;
+// use std::str::FromStr;
+//
+// use clap::{ArgEnum, Parser, Subcommand};
+// use fxhash::FxHashMap;
+// use rayon::prelude::*;
+//
+// use grammar::bare::GrammarBare;
+// use grammar::parse::{GrammarParse, PruneMode};
+// use grammar::rule::{Rule, WeightedRule};
+// use sentence::Sentence;
+// use sexp::SExp;
+// use tree::Tree;
 
-use clap::{ArgEnum, Parser, Subcommand};
-use fxhash::FxHashMap;
-use rayon::prelude::*;
+fn main() {}
 
-use grammar::bare::GrammarBare;
-use grammar::parse::{GrammarParse, PruneMode};
-use grammar::rule::{Rule, WeightedRule};
-use sentence::Sentence;
-use sexp::SExp;
-use tree::Tree;
-
-#[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
-#[clap(propagate_version = true)]
+//#[derive(Parser)]
+//#[clap(author, version, about, long_about = None)]
+//#[clap(propagate_version = true)]
+#[allow(dead_code)]
 struct Cli {
-    #[clap(subcommand)]
+    //#[clap(subcommand)]
     command: Commands,
 }
 
-#[derive(Subcommand)]
+// #[derive(Subcommand)]
+#[allow(dead_code)]
 enum Commands {
     /// Reads a sequence of constituent trees from STDIN and prints the induced PCFG to STDOUT.
     /// If the optional argument [GRAMMAR] is present, it is written into the files
@@ -42,42 +46,41 @@ enum Commands {
         rules: String,
         lexicon: String,
         /// Choose the parsing paradigm.
-        #[clap(short, long, default_value_t=ParsingParadigma::Cyk, arg_enum)]
+        //#[clap(short, long, default_value_t=ParsingParadigma::Cyk, arg_enum)]
         paradigma: ParsingParadigma,
         /// Set custom initial non-terminal for the given PCFG.        /// Not implemented.
-
-        #[clap(short, long, default_value_t = String::from("ROOT"))]
+        //#[clap(short, long, default_value_t = String::from("ROOT"))]
         initial_nonterminal: String,
         /// Do trivial unking on supplied sentences before parsing.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         unking: bool,
         /// Do smoothing on supplied sentences before parsing.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         smoothing: bool,
         /// Prune parsing data with the given threshold. Rules are only kept if their probability
         /// is not lower than the best derivation multiplied by the threshold.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         threshold_beam: Option<f64>,
         /// Prune parsing data with the given rank n. Rules are only kept if their probability
         /// is not lower than the n-best derivation.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         rank_beam: Option<usize>,
         /// Not implemented.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         kbest: Option<u32>,
         /// Not implemented.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         astar: Option<PathBuf>,
     },
     /// Reads constituent trees from STDIN and returns their binarised counterparts to STDOUT.
     Binarise {
         /// Set horizontal markovisation parameter.
-        #[clap(short, long, default_value_t = 999)]
+        //#[clap(short, long, default_value_t = 999)]
         horizontal: usize,
         /// Set vertical markovisation parameter.
-        #[clap(short, long, default_value_t = 1)]
+        //#[clap(short, long, default_value_t = 1)]
         vertical: usize,
-        #[clap(long)]
+        //#[clap(long)]
         help: bool,
     },
     /// Reads binarised constituent trees from STDIN and returns them in their original state to STDOUT.
@@ -85,13 +88,13 @@ enum Commands {
     /// Reads sequence of constituent trees from STDIN and returns the derived trees via trivial unking.
     Unk {
         /// If a word occurs less often than the threshold it gets unked.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         threshold: usize,
     },
     /// Reads sequence of constituent trees from STDIN and returns the derived trees via smoothing.
     Smooth {
         /// If a word occurs less often than the threshold it gets unked with the derived signature.
-        #[clap(short, long)]
+        //#[clap(short, long)]
         threshold: usize,
     },
     /// Not implemented.
@@ -99,17 +102,19 @@ enum Commands {
         rules: String,
         lexicon: String,
         grammar: Option<String>,
-        #[clap(short, long, default_value_t = String::from("ROOT"))]
+        //#[clap(short, long, default_value_t = String::from("ROOT"))]
         initial_nonterminal: String,
     },
 }
 
-#[derive(ArgEnum, Copy, Clone, PartialEq, Eq)]
+// #[derive(ArgEnum, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone)]
+#[allow(dead_code)]
 enum ParsingParadigma {
     Cyk,
     Deductive,
 }
-
+/*
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
@@ -384,12 +389,14 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
+ */
+#[allow(dead_code)]
 enum UnkingMode {
     Trivial,
     Smoothing,
 }
 
+/*
 fn unking(mode: UnkingMode, threshold: usize) {
     let stdin = io::stdin();
     let handle = stdin.lock();
@@ -430,3 +437,4 @@ fn unking(mode: UnkingMode, threshold: usize) {
         println!("{}", t);
     });
 }
+*/
